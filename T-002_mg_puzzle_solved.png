@@ -3,444 +3,716 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>«Звёздный портал» — T-002: мини-игры (инвентарь, тайник-загадка, сборка артефакта)</title>
+<title>«Звёздный портал» — T-002: гибридное управление, Бермудский вертекс, 1938</title>
 <style>
   :root{
-    --ink:#0d0c0a; --panel:#16130f; --panel2:#1e1a14;
-    --brass:#c8a45c; --brass-d:#8a7038; --steel:#3a3a3c;
-    --paper:#d8cfba; --muted:#8a8171; --red:#a8443a; --blue:#7fa8bd; --green:#7d9464;
+    --ink:#0d0c0a;
+    --panel:#16130f;
+    --panel2:#1e1a14;
+    --brass:#c8a45c;
+    --brass-d:#8a7038;
+    --steel:#3a3a3c;
+    --paper:#d8cfba;
+    --muted:#8a8171;
+    --red:#a8443a;
+    --blue:#7fa8bd;
+    --green:#7d9464;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);
     font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
-    -webkit-font-smoothing:antialiased}
-  h1{font-size:15px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--brass);margin:0 0 3px;font-family:"Helvetica Neue",Arial,sans-serif}
-  #wrap{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
-  #top p{color:var(--muted);font-size:12.5px;line-height:1.6;max-width:760px;margin:0 0 18px}
-  .row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
-  .card{background:var(--panel);border:1px solid #2b251c;border-radius:4px;padding:16px}
-  .card h2{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  #app{display:flex;height:100vh;width:100vw}
+  #stage{position:relative;flex:1;min-width:0;background:
+    radial-gradient(ellipse at 50% 35%, #1a1713 0%, #0d0c0a 70%)}
+  canvas{display:block;width:100%;height:100%}
+  #side{width:310px;flex:0 0 310px;background:var(--panel);
+    border-left:1px solid #2b251c;display:flex;flex-direction:column;overflow:hidden}
+  .sec{padding:10px 14px;border-bottom:1px solid #2b251c}
+  .sec h3{margin:0 0 8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
     color:var(--brass);font-weight:600;font-family:"Helvetica Neue",Arial,sans-serif}
-  .hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:0 0 10px}
-  button{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.06em;
-    text-transform:uppercase;padding:9px 14px;background:var(--panel2);color:var(--paper);
-    border:1px solid #3a3227;cursor:pointer;transition:.12s;border-radius:2px}
-  button:hover:not(:disabled){background:#302819;border-color:var(--brass-d)}
-  button:disabled{opacity:.35;cursor:not-allowed}
-  button.go{background:var(--brass);color:#17130c;border-color:var(--brass);font-weight:600}
-  button.go:hover:not(:disabled){background:#d8b46c}
-  /* ---------------- инвентарь ---------------- */
-  #grid{position:relative;background:#0f0d0a;border:2px solid #2b251c;border-radius:3px;
-    background-image:linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
-  }
-  .item{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;
-    text-align:center;font-family:"Helvetica Neue",Arial,sans-serif;font-size:9px;
-    letter-spacing:.01em;line-height:1.2;color:#20180d;font-weight:700;cursor:grab;
-    user-select:none;padding:3px;overflow:hidden;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.5)}
-  .item.dragging{cursor:grabbing;opacity:.88;z-index:50;box-shadow:0 10px 24px rgba(0,0,0,.7)}
-  .item.frag{background:linear-gradient(#8a5b57,#6a4340);color:#f2e6d4}
-  .item.gear{background:linear-gradient(#9d7f42,#7a6032);color:#241b0c}
-  .item.doc{background:linear-gradient(#7fa8bd,#5f8298);color:#0d1a20}
-  .item.built{background:linear-gradient(#c8a45c,#9d7f42);color:#1d1608;font-weight:700}
-  .ghost{position:absolute;border-radius:4px;pointer-events:none;z-index:5}
-  .ghost.ok{background:rgba(127,148,100,.30);outline:1px solid rgba(159,189,127,.7)}
-  .ghost.bad{background:rgba(168,68,58,.30);outline:1px solid rgba(200,110,95,.7)}
-  #invLog{font-size:11px;color:var(--muted);margin-top:10px;min-height:16px}
-  /* ---------------- оверлеи ---------------- */
-  .overlay{position:fixed;inset:0;background:rgba(6,5,4,.88);display:none;
-    align-items:center;justify-content:center;z-index:100}
-  .overlay.show{display:flex}
-  .modal{background:var(--panel);border:1px solid #3a3227;border-radius:6px;padding:26px;
-    max-width:520px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.7)}
-  .modal h2{margin:0 0 4px}
-  .modal .sub{font-size:11.5px;color:var(--muted);margin-bottom:16px}
-  .modal .close{float:right;background:none;border:none;color:var(--muted);font-size:18px;
-    cursor:pointer;padding:0 4px}
-  /* ---------------- пятнашки ---------------- */
-  #puzzle{display:grid;grid-template-columns:repeat(3,96px);grid-template-rows:repeat(3,96px);
-    gap:3px;margin:0 auto 14px;width:294px}
-  .ptile{width:96px;height:96px;background-repeat:no-repeat;background-size:294px 294px;
-    cursor:pointer;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);
-    transition:transform .08s}
-  .ptile:hover{filter:brightness(1.15)}
-  .ptile.empty{visibility:hidden}
-  #puzzleMsg{text-align:center;font-size:12px;color:var(--muted);min-height:18px}
-  #puzzleMsg.win{color:var(--green);font-weight:700}
-  /* ---------------- верстак ---------------- */
-  .slots{display:flex;gap:12px;justify-content:center;margin:16px 0}
-  .slot{width:96px;height:64px;border:2px dashed #4a3d2c;border-radius:4px;
-    display:flex;align-items:center;justify-content:center;flex-direction:column;
-    font-family:"Helvetica Neue",Arial,sans-serif;font-size:9.5px;color:var(--muted);
-    text-align:center;padding:4px}
-  .slot.filled{border-style:solid;border-color:var(--brass);background:rgba(200,164,92,.12);color:var(--paper)}
-  #fragPicks{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
-  #benchMsg{text-align:center;font-size:12px;color:var(--muted);min-height:18px}
-  #benchMsg.win{color:var(--green);font-weight:700}
+  .unit{padding:8px 10px;margin-bottom:6px;background:var(--panel2);
+    border-left:3px solid #444;cursor:pointer;transition:.12s}
+  .unit:hover{background:#252017}
+  .unit.sel{border-left-color:var(--brass);background:#2a2318}
+  .unit.dead{opacity:.35;cursor:default}
+  .unit .nm{font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
+  .unit .nm small{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;
+    letter-spacing:.1em;color:var(--muted)}
+  .bar{height:5px;background:#000;margin-top:5px;position:relative;overflow:hidden}
+  .bar i{display:block;height:100%;transition:width .25s}
+  .bar.hp i{background:var(--green)}
+  .bar.hum i{background:var(--red)}
+  #note{font-size:11.5px;line-height:1.6;color:var(--muted)}
+  #note b{color:var(--paper)}
+  /* ---------- резонатор (пауза) ---------- */
+  #reso{position:absolute;right:16px;bottom:16px;width:246px;
+    background:linear-gradient(#211d17,#141110);
+    border:2px solid #3b3125;border-radius:5px;padding:11px;
+    box-shadow:0 12px 40px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.05);
+    display:none}
+  #reso.show{display:block}
+  #reso .plate{background:linear-gradient(#c9a961,#9d7f42);color:#221a0c;
+    font-family:"Helvetica Neue",Arial,sans-serif;text-align:center;
+    padding:5px 4px;border:1px solid #6d5527;border-radius:2px;
+    font-size:10.5px;letter-spacing:.11em;line-height:1.35;font-weight:700}
+  #reso .plate small{display:block;font-weight:400;font-size:8.5px;letter-spacing:.09em;
+    opacity:.82;margin-top:1px}
+  #reso .win{margin-top:10px;background:#0a0908;border:2px solid #4a3d2c;border-radius:3px;
+    padding:9px;display:flex;align-items:center;gap:10px;
+    box-shadow:inset 0 3px 12px rgba(0,0,0,.9)}
+  .barrels{display:flex;gap:5px}
+  .barrel{width:34px;height:44px;border-radius:3px;
+    background:linear-gradient(#3a352c 0%,#191712 18%,#26221b 50%,#191712 82%,#3a352c 100%);
+    border:1px solid #57493a;display:flex;align-items:center;justify-content:center;
+    font-family:"Helvetica Neue",Arial,sans-serif;font-size:22px;font-weight:700;
+    color:#e2d6b8;text-shadow:0 1px 2px #000}
+  .barrel.spin{color:#8d8474}
+  #reso .sum{margin-top:9px;text-align:center;font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:10.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase;
+    min-height:15px}
+  #reso .sum b{color:var(--brass);font-size:13px}
+  #reso .who{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;letter-spacing:.08em;
+    color:var(--muted);text-align:center;margin-top:6px}
+  /* ---------- лог ---------- */
+  #log{position:absolute;left:14px;bottom:14px;width:390px;max-height:190px;overflow:hidden;
+    font-size:12.5px;line-height:1.5;pointer-events:none;
+    display:flex;flex-direction:column-reverse}
+  #log div{margin-top:3px;text-shadow:0 1px 3px #000;opacity:.92}
+  #log .big{color:var(--brass);font-size:13.5px}
+  #log .bad{color:#c9705f}
+  #log .good{color:#9fbd7f}
+  /* ---------- хроника / текстовая вставка на фоне ---------- */
+  #chron{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;background-size:cover;background-position:center;
+    transition:background-image .3s}
+  #chron::before{content:'';position:absolute;inset:0;background:rgba(8,7,6,.72)}
+  #chron .inner{position:relative;max-width:640px;padding:34px;text-align:center;filter:contrast(1.05)}
+  #chron .stamp{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;
+    letter-spacing:.42em;color:#c8bda0;margin-bottom:20px}
+  #chron h1{font-size:28px;margin:0 0 6px;letter-spacing:.05em;color:#f1e8d2;font-weight:400}
+  #chron .sub{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.2em;
+    color:#a89d80;text-transform:uppercase;margin-bottom:18px}
+  #chron p{font-size:14.5px;line-height:1.8;color:#d9cfb6;margin:0 0 9px;text-shadow:0 2px 6px #000}
+  #chron .go{margin-top:24px;font-family:"Helvetica Neue",Arial,sans-serif;font-size:10.5px;
+    letter-spacing:.3em;color:#cdbf9c;animation:pulse 2s infinite}
+  #chron .dots{position:relative;margin-top:16px;display:flex;gap:7px;justify-content:center}
+  #chron .dots i{width:6px;height:6px;border-radius:50%;background:#5f5849}
+  #chron .dots i.on{background:var(--brass)}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  #chron .grain{position:absolute;inset:0;pointer-events:none;opacity:.14;
+    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 3px)}
+  .leg{font-size:11.5px;line-height:1.7;color:var(--muted)}
+  .leg i{display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:baseline}
+  #banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.26em;
+    color:#6f6757;text-transform:uppercase;pointer-events:none}
+  #endcard{position:absolute;inset:0;background:rgba(6,5,4,.93);z-index:60;
+    display:none;align-items:center;justify-content:center;text-align:center}
+  #endcard h2{font-size:26px;font-weight:400;letter-spacing:.06em;color:var(--brass);margin:0 0 12px}
+  #endcard p{color:#8f8571;font-size:14px;max-width:430px;line-height:1.7;margin:0 auto}
+  #hint{position:absolute;left:14px;top:40px;font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:10.5px;letter-spacing:.06em;line-height:1.7;color:#7d7460;max-width:300px}
+  #hint b{color:var(--brass)}
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="top">
-    <h1>T-002 · три мини-игры на пробу</h1>
-    <p>Спайк по итогам разговора: гибрид «пауза на выстрел» — не то, что нужно (правильная версия —
-      ниже отдельным пунктом в задаче), а вот мини-игры для режима путешествия — да. Здесь три из
-      пяти задуманных: <b>инвентарь-сортировка</b>, <b>загадка-тайник</b> («пятнашки» открывают
-      манускрипт) и <b>сборка предмета из частей, разбросанных по миру</b> — последнее прямо
-      реализует идею «артефактов-обломков» из лор-библии v1.6 (раздел 4.4). Крафт и картография
-      с метками/тайниками/засадами — не здесь, ждут своей очереди.</p>
-  </div>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="banner">T-002 · гибрид: реал-тайм + пауза на резонатор · Бермуды · 1938</div>
+    <div id="hint">Клик по земле — идти (реал-тайм, как в Diablo 2).<br>
+      Клик по врагу в зоне видимости — <b>выстрел</b>: время останавливается,
+      крутятся барабаны, потом бой продолжается.<br>
+      Смерть — не исчезновение, а рэгдолл: тело падает по физике.</div>
+    <div id="log"></div>
 
-  <div class="row">
-    <div class="card" style="flex:0 0 auto">
-      <h2>Инвентарь-сортировка</h2>
-      <p class="hint">Перетаскивайте предметы (зажать и вести мышью). Клавиша <b>R</b> во время
-        перетаскивания — повернуть предмет на 90°. Зелёная подсветка — можно положить, красная —
-        не влезает или занято.</p>
-      <div id="grid"></div>
-      <div id="invLog"></div>
+    <div id="reso">
+      <div class="plate">RESONANZ&nbsp;ANZEIGER
+        <small>V. N. — VERSUCH 3 · артефакт, не изобретение</small>
+      </div>
+      <div class="win">
+        <div class="barrels">
+          <div class="barrel" id="b0">1</div>
+          <div class="barrel" id="b1">2</div>
+          <div class="barrel" id="b2">3</div>
+        </div>
+      </div>
+      <div class="sum" id="sumline">—</div>
+      <div class="who" id="wholine">—</div>
     </div>
 
-    <div class="card" style="flex:1;min-width:280px">
-      <h2>Что дальше открывает прогресс</h2>
-      <p class="hint">Обломки Тибета, Антарктиды и Европы уже в рюкзаке. Обломка Бермуд там нет —
-        его прячет тайник. Без всех четырёх верстак не соберёт диск.</p>
-      <button class="go" id="btnPuzzle">Открыть древний тайник (загадка)</button>
-      <button id="btnBench" style="margin-left:8px">Верстак — собрать индикатор</button>
-      <p class="hint" style="margin-top:16px">Порядок специально такой: тайник → фрагмент Бермуд →
-        верстак. Проверяем, что мини-игры не декоративные, а держат прогрессию квеста.</p>
+    <div id="chron">
+      <div class="grain"></div>
+      <div class="inner">
+        <div class="stamp" id="chStamp">ГЕХАЙМ · АНЕНЕРБЕ · ФИЛЬМОТЕКА</div>
+        <h1 id="chTitle"></h1>
+        <div class="sub" id="chSub"></div>
+        <div id="chBody"></div>
+        <div class="go" id="chGo">— нажмите, чтобы продолжить —</div>
+        <div class="dots" id="chDots"></div>
+      </div>
     </div>
-  </div>
-</div>
 
-<!-- ================= пятнашки / тайник ================= -->
-<div class="overlay" id="ovPuzzle">
-  <div class="modal">
-    <button class="close" id="closePuzzle">✕</button>
-    <h2>Древний тайник</h2>
-    <div class="sub">Соберите узор из семи символов — механизм тайника читает форму, не силу.</div>
-    <div id="puzzle"></div>
-    <div id="puzzleMsg">Кликните плитку рядом с пустой клеткой, чтобы сдвинуть.</div>
+    <div id="endcard"><div><h2 id="endt"></h2><p id="endp"></p></div></div>
   </div>
-</div>
 
-<!-- ================= верстак ================= -->
-<div class="overlay" id="ovBench">
-  <div class="modal">
-    <button class="close" id="closeBench">✕</button>
-    <h2>Верстак Виктора</h2>
-    <div class="sub">Четыре обломка одной технологии — по одному с каждой точки маршрута.</div>
-    <div id="fragPicks"></div>
-    <div class="slots" id="slots"></div>
-    <div style="text-align:center">
-      <button class="go" id="btnAssemble" disabled>Собрать</button>
+  <aside id="side">
+    <div class="sec">
+      <h3>Отряд</h3>
+      <div id="roster"></div>
     </div>
-    <div id="benchMsg"></div>
-  </div>
+    <div class="sec">
+      <h3>Что это</h3>
+      <div id="note">
+        Спайк к задаче <b>T-002</b>: проверяем гибридное управление
+        (свободное перемещение в реальном времени + пауза-бросок индикатора
+        на риске) и рэгдолл на смерти. Карта — черновая, тон Бермуд
+        (раздел 4.5 лор-библии). Три текстовые вставки в начале — по одной
+        на миссии 1, 4 и 9 (см. заявку в канон в тексте задачи).
+      </div>
+    </div>
+    <div class="sec">
+      <h3>Обозначения</h3>
+      <div class="leg">
+        <i style="background:#5d5346"></i>стена — полное укрытие<br>
+        <i style="background:#7a6544"></i>ящик — низкое укрытие<br>
+        <i style="background:#7e3b34"></i>зона гула излучателя
+      </div>
+    </div>
+  </aside>
 </div>
 
 <script>
 "use strict";
 /* ==========================================================================
-   T-002 · три мини-игры: инвентарь, тайник-«пятнашки», сборка из обломков.
-   Всё на DOM (не canvas) — для UI-механик это проще и надёжнее таскать.
+   T-002 · спайк «гибридное управление»
+   Реал-тайм перемещение (клик-и-иди) + пауза на бросок резонатора при риске
+   (выстрел) + рэгдолл-физика на смерти + текстовые вставки с фоном
+   (документальный стиль, без роликов — раздел «что открыто» STATE.md).
+   За основу взята математика изометрии и бросок барабанов из
+   prototype/prototype_scene.html (канон, не трогаем — это отдельный файл).
    ========================================================================== */
 
-/* ------------------------------ инвентарь --------------------------------- */
-const COLS = 8, ROWS = 5, CELL = 56;
-
-// форма — список [dx,dy] клеток от левого верхнего угла предмета
-const SHAPES = {
-  "1x1": [[0,0]],
-  "2x1": [[0,0],[1,0]],
-  "1x2": [[0,0],[0,1]],
-  "2x2": [[0,0],[1,0],[0,1],[1,1]]
-};
-
-let items = [
-  { id:"frag_tibet",  name:"Обломок · Тибет",      cls:"frag", shape:"2x1", gx:0, gy:0, loc:"Тибет" },
-  { id:"frag_antar",  name:"Обломок · Антарктида",  cls:"frag", shape:"2x1", gx:0, gy:1, loc:"Антарктида" },
-  { id:"frag_europe", name:"Обломок · Европа",      cls:"frag", shape:"1x2", gx:3, gy:0, loc:"Европа" },
-  { id:"comp",        name:"Компенсатор",           cls:"gear", shape:"1x1", gx:5, gy:0 },
-  { id:"ammo",        name:"Патроны",               cls:"gear", shape:"1x1", gx:6, gy:0 },
-  { id:"med",         name:"Медикамент",            cls:"gear", shape:"1x2", gx:6, gy:1 },
-  { id:"radio",       name:"Рация",                 cls:"gear", shape:"2x2", gx:0, gy:3 }
+/* ------------------------------ карта (Бермуды) ------------------------- */
+const MAPSTR = [
+  "############",
+  "#....c.....#",
+  "#..c.......#",
+  "#....##....#",
+  "#....#E....#",
+  "#..c.#.....#",
+  "#..........#",
+  "#....##....#",
+  "#.c..##..c.#",
+  "#..........#",
+  "#....c.....#",
+  "############"
 ];
-let gained = [];   // предметы, добавленные по ходу демо (манускрипт, обломок Бермуд, диск)
+const W = 12, H = 12;
+const TW = 68, TH = 34;
+const EMIT = { x: 6, y: 4, r: 3.1 };
 
-const gridEl = document.getElementById("grid");
-gridEl.style.width  = (COLS * CELL) + "px";
-gridEl.style.height = (ROWS * CELL) + "px";
-gridEl.style.backgroundSize = CELL + "px " + CELL + "px";
+const grid = MAPSTR.map(r => r.split(""));
+const tile = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? "#" : (grid[y][x] || "#");
+const isWalk = (x, y) => tile(x, y) === ".";
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const inHum = (x, y) => Math.hypot(x - EMIT.x, y - EMIT.y) <= EMIT.r;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function cellsOf(shape, gx, gy) {
-  return SHAPES[shape].map(([dx, dy]) => [gx + dx, gy + dy]);
+/* ------------------------------ юниты ------------------------------------
+   Позиции — float (fx, fy), а не целые клетки: это и есть отличие от
+   пошагового прототипа, юнит плывёт к цели каждый кадр, а не телепортится
+   по завершении хода. */
+let units = [
+  { id:"k", name:"Кессель", role:"солдат", side:"p", fx:3, fy:9, x:3, y:9,
+    hp:8, maxHp:8, hum:0, speed:2.6, path:[], col:"#c8a45c",
+    dead:false, cooldown:0, reload:0.9 },
+  { id:"v", name:"Виктор", role:"учёный", side:"p", fx:5, fy:9, x:5, y:9,
+    hp:6, maxHp:6, hum:0, speed:2.2, path:[], col:"#7fa8bd",
+    dead:false, cooldown:0, reload:1.1 },
+  { id:"e1", name:"Трискель · разведчик", role:"противник", side:"e", fx:4, fy:2, x:4, y:2,
+    hp:6, maxHp:6, hum:0, speed:2.0, path:[], col:"#a35b4a",
+    dead:false, cooldown:1.2, reload:1.6, aiRange:7 },
+  { id:"e2", name:"Трискель · егерь", role:"противник", side:"e", fx:9, fy:7, x:9, y:7,
+    hp:7, maxHp:7, hum:0, speed:2.2, path:[], col:"#8f4f42",
+    dead:false, cooldown:2.0, reload:1.8, aiRange:7 }
+];
+const alive = () => units.filter(u => !u.dead);
+const unitAt = (x, y) => alive().find(u => Math.round(u.fx) === x && Math.round(u.fy) === y);
+const players = () => alive().filter(u => u.side === "p");
+const enemies = () => alive().filter(u => u.side === "e");
+
+/* ------------------------------ состояние -------------------------------- */
+let sel = units[0];
+let hoverTile = { x:-1, y:-1 };
+let paused = false;      // true во время броска резонатора или текстовой вставки
+let over = false;
+let ragdolls = [];       // активные рэгдоллы
+
+/* ------------------------------ утилиты ---------------------------------- */
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+let ORX = 0, ORY = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * DPR; cv.height = r.height * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ORX = r.width / 2;
+  ORY = r.height / 2 - (W + H) * TH / 4 + 30;
 }
-function fits(shape, gx, gy, ignoreId) {
-  for (const [x, y] of cellsOf(shape, gx, gy)) {
-    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
-  }
-  for (const it of items) {
-    if (it.id === ignoreId) continue;
-    const occ = new Set(cellsOf(it.shape, it.gx, it.gy).map(c => c.join(",")));
-    for (const c of cellsOf(shape, gx, gy)) if (occ.has(c.join(","))) return false;
-  }
-  return true;
+const sx = (x, y) => ORX + (x - y) * (TW / 2);
+const sy = (x, y) => ORY + (x + y) * (TH / 2);
+function pick(mx, my) {
+  const dx = mx - ORX, dy = my - ORY;
+  const fx = (dx / (TW / 2) + dy / (TH / 2)) / 2;
+  const fy = (dy / (TH / 2) - dx / (TW / 2)) / 2;
+  return { x: Math.floor(fx), y: Math.floor(fy) };
 }
-function rotateShapeName(s) {
-  return s === "2x1" ? "1x2" : s === "1x2" ? "2x1" : s === "2x2" ? "2x2" : "1x1";
+function log(msg, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  $("log").prepend(d);
+  while ($("log").children.length > 8) $("log").lastChild.remove();
 }
 
-let dragging = null, dragDX = 0, dragDY = 0, dragShape = null, dragGX = 0, dragGY = 0;
-let ghostEl = null;
-
-function paintInventory() {
-  gridEl.querySelectorAll(".item").forEach(e => e.remove());
-  items.forEach(it => {
-    const [w, h] = shapeSize(it.shape);
-    const d = document.createElement("div");
-    d.className = "item " + it.cls + (dragging === it ? " dragging" : "");
-    d.style.left = (it.gx * CELL) + "px";
-    d.style.top  = (it.gy * CELL) + "px";
-    d.style.width  = (w * CELL - 4) + "px";
-    d.style.height = (h * CELL - 4) + "px";
-    d.textContent = it.name;
-    d.dataset.id = it.id;
-    d.addEventListener("mousedown", onGrab);
-    gridEl.appendChild(d);
-  });
-}
-function shapeSize(shape) {
-  const cells = SHAPES[shape];
-  const w = Math.max(...cells.map(c => c[0])) + 1;
-  const h = Math.max(...cells.map(c => c[1])) + 1;
-  return [w, h];
-}
-
-function onGrab(e) {
-  const id = e.currentTarget.dataset.id;
-  const it = items.find(i => i.id === id);
-  if (!it) return;
-  dragging = it;
-  dragShape = it.shape;
-  const r = gridEl.getBoundingClientRect();
-  dragDX = e.clientX - (r.left + it.gx * CELL);
-  dragDY = e.clientY - (r.top + it.gy * CELL);
-  ghostEl = document.createElement("div");
-  ghostEl.className = "ghost";
-  gridEl.appendChild(ghostEl);
-  paintInventory();
-  document.addEventListener("mousemove", onDrag);
-  document.addEventListener("mouseup", onDrop);
-  document.addEventListener("keydown", onKeyRotate);
-  e.preventDefault();
-}
-function onKeyRotate(e) {
-  if (!dragging || e.key.toLowerCase() !== "r") return;
-  dragShape = rotateShapeName(dragShape);
-  updateGhost(lastMouseEvent);
-}
-let lastMouseEvent = null;
-function onDrag(e) {
-  lastMouseEvent = e;
-  const el = gridEl.querySelector('.item[data-id="' + dragging.id + '"]');
-  const r = gridEl.getBoundingClientRect();
-  const px = e.clientX - r.left - dragDX;
-  const py = e.clientY - r.top - dragDY;
-  if (el) { el.style.left = px + "px"; el.style.top = py + "px"; }
-  updateGhost(e);
-}
-function updateGhost(e) {
-  if (!e) return;
-  const r = gridEl.getBoundingClientRect();
-  const gx = Math.round((e.clientX - r.left - dragDX) / CELL);
-  const gy = Math.round((e.clientY - r.top - dragDY) / CELL);
-  dragGX = gx; dragGY = gy;
-  const ok = fits(dragShape, gx, gy, dragging.id);
-  const [w, h] = shapeSize(dragShape);
-  ghostEl.className = "ghost " + (ok ? "ok" : "bad");
-  ghostEl.style.left = (gx * CELL) + "px";
-  ghostEl.style.top  = (gy * CELL) + "px";
-  ghostEl.style.width  = (w * CELL - 4) + "px";
-  ghostEl.style.height = (h * CELL - 4) + "px";
-}
-function onDrop(e) {
-  document.removeEventListener("mousemove", onDrag);
-  document.removeEventListener("mouseup", onDrop);
-  document.removeEventListener("keydown", onKeyRotate);
-  if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-  const ok = fits(dragShape, dragGX, dragGY, dragging.id);
-  const log = document.getElementById("invLog");
-  if (ok) {
-    dragging.shape = dragShape; dragging.gx = dragGX; dragging.gy = dragGY;
-    log.textContent = dragging.name + " — переложено.";
-  } else {
-    log.textContent = "Не влезает — предмет остался на месте.";
-  }
-  dragging = null;
-  paintInventory();
-}
-function addItem(def) {
-  // ищем первое свободное место под форму предмета
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-    if (fits(def.shape, x, y, null)) { def.gx = x; def.gy = y; items.push(def); paintInventory(); return true; }
+/* ------------------------------ линия огня / укрытие --------------------- */
+function hasLOS(a, b) {
+  let x0 = Math.round(a.fx), y0 = Math.round(a.fy);
+  const x1 = Math.round(b.fx), y1 = Math.round(b.fy);
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sxg = x0 < x1 ? 1 : -1, syg = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  for (let guard = 0; guard < 64; guard++) {
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sxg; }
+    if (e2 < dx)  { err += dx; y0 += syg; }
+    if (x0 === x1 && y0 === y1) return true;
+    if (tile(x0, y0) === "#" && Math.hypot(x0 - x1, y0 - y1) > 1.5) return false;
   }
   return false;
 }
-paintInventory();
-
-/* ------------------------------ пятнашки / тайник -------------------------- */
-const N = 3; // 3x3, восемь плиток + пустая
-let puzzleOrder = [];  // индекс "правильной" позиции в каждой ячейке текущей раскладки
-let emptyIdx = N * N - 1;
-let puzzleSolved = false;
-
-// процедурный фон-«символ» вместо картинки: SVG с кольцом рун, data URI
-const RUNE_SVG = encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
-  '<rect width="300" height="300" fill="#241f19"/>' +
-  '<circle cx="150" cy="150" r="118" fill="none" stroke="#8a7038" stroke-width="3"/>' +
-  '<circle cx="150" cy="150" r="70" fill="none" stroke="#c8a45c" stroke-width="2"/>' +
-  Array.from({length:7}).map((_,i)=>{
-    const a = (Math.PI*2/7)*i - Math.PI/2;
-    const x = 150+Math.cos(a)*94, y = 150+Math.sin(a)*94;
-    return '<circle cx="'+x+'" cy="'+y+'" r="9" fill="#d8cfba"/>' +
-           '<line x1="150" y1="150" x2="'+x+'" y2="'+y+'" stroke="#6a5a3a" stroke-width="1.5"/>';
-  }).join('') +
-  '<circle cx="150" cy="150" r="14" fill="#a8443a"/>' +
-  '</svg>'
-);
-const RUNE_URL = "data:image/svg+xml," + RUNE_SVG;
-
-function puzzleHomePos(i) { return [i % N, Math.floor(i / N)]; }
-function shufflePuzzle() {
-  puzzleOrder = Array.from({length: N*N}, (_, i) => i);
-  emptyIdx = N * N - 1;
-  // случайные валидные ходы от решённого состояния — гарантия разрешимости
-  for (let s = 0; s < 120; s++) {
-    const [ex, ey] = puzzleHomePosOfEmpty();
-    const moves = [[1,0],[-1,0],[0,1],[0,-1]]
-      .map(([dx,dy]) => [ex+dx, ey+dy])
-      .filter(([x,y]) => x>=0 && y>=0 && x<N && y<N);
-    const [tx, ty] = moves[Math.floor(Math.random()*moves.length)];
-    swapPuzzle(ty*N+tx);
+function coverOf(shooter, target) {
+  const dx = Math.sign(Math.round(shooter.fx) - Math.round(target.fx));
+  const dy = Math.sign(Math.round(shooter.fy) - Math.round(target.fy));
+  let best = 0;
+  const probes = [[dx, dy], [dx, 0], [0, dy]].filter(p => p[0] || p[1]);
+  for (const [px, py] of probes) {
+    const t = tile(Math.round(target.fx) + px, Math.round(target.fy) + py);
+    if (t === "#") best = Math.max(best, 3);
+    else if (t === "c" || t === "E") best = Math.max(best, 2);
   }
+  return best;
 }
-function puzzleHomePosOfEmpty() {
-  const pos = puzzleOrder.indexOf(N*N-1);
-  return [pos % N, Math.floor(pos / N)];
+function modsFor(shooter, target) {
+  const m = [];
+  const c = coverOf(shooter, target);
+  if (c === 3) m.push({ t: "полное укрытие цели", v: -3 });
+  else if (c === 2) m.push({ t: "низкое укрытие цели", v: -2 });
+  const d = dist({x:shooter.fx,y:shooter.fy}, {x:target.fx,y:target.fy});
+  if (d > 7) m.push({ t: "дальняя дистанция", v: -1 });
+  else if (d <= 2.2) m.push({ t: "вплотную", v: +1 });
+  if (shooter.hum >= 3) m.push({ t: "гул в голове (≥3)", v: -1 });
+  return m;
 }
-function swapPuzzle(cellIdx) {
-  const emptyPos = puzzleOrder.indexOf(N*N-1);
-  [puzzleOrder[cellIdx], puzzleOrder[emptyPos]] = [puzzleOrder[emptyPos], puzzleOrder[cellIdx]];
-}
-function adjacentToEmpty(cellIdx) {
-  const emptyPos = puzzleOrder.indexOf(N*N-1);
-  const ex = emptyPos % N, ey = Math.floor(emptyPos / N);
-  const cx = cellIdx % N, cy = Math.floor(cellIdx / N);
-  return Math.abs(ex-cx) + Math.abs(ey-cy) === 1;
-}
-function paintPuzzle() {
-  const box = document.getElementById("puzzle");
-  box.innerHTML = "";
-  for (let cell = 0; cell < N*N; cell++) {
-    const tileVal = puzzleOrder[cell];
-    const d = document.createElement("div");
-    d.className = "ptile" + (tileVal === N*N-1 ? " empty" : "");
-    const [hx, hy] = puzzleHomePos(tileVal);
-    d.style.backgroundImage = "url(" + RUNE_URL + ")";
-    d.style.backgroundPosition = (-hx*96) + "px " + (-hy*96) + "px";
-    d.onclick = () => {
-      if (puzzleSolved) return;
-      if (!adjacentToEmpty(cell)) return;
-      swapPuzzle(cell);
-      paintPuzzle();
-      checkPuzzleWin();
-    };
-    box.appendChild(d);
+const sumMods = m => m.reduce((s, x) => s + x.v, 0);
+
+/* ------------------------------ бросок резонатора ------------------------- */
+function rollBarrels(unit) {
+  const nervous = inHum(Math.round(unit.fx), Math.round(unit.fy));
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const a = 1 + Math.floor(Math.random() * 3);
+    if (!nervous) { out.push(a); continue; }
+    const b = 1 + Math.floor(Math.random() * 3);
+    out.push(Math.min(a, b));
   }
+  return out;
 }
-function checkPuzzleWin() {
-  const solved = puzzleOrder.every((v, i) => v === i);
-  const msg = document.getElementById("puzzleMsg");
-  if (solved) {
-    puzzleSolved = true;
-    msg.className = "win";
-    msg.textContent = "Символ сошёлся. Тайник открыт: манускрипт и обломок Бермуд — в рюкзаке.";
-    if (!gained.includes("manuscript_bermuda")) {
-      gained.push("manuscript_bermuda");
-      addItem({ id:"manuscript_bermuda", name:"Манускрипт · Бермуды", cls:"doc", shape:"1x1" });
-      addItem({ id:"frag_bermuda", name:"Обломок · Бермуды", cls:"frag", shape:"2x1", loc:"Бермуды" });
-      refreshBenchAvailability();
-    }
+function spinTo(final) {
+  return new Promise(res => {
+    const els = [$("b0"), $("b1"), $("b2")];
+    els.forEach(e => e.classList.add("spin"));
+    let ticks = 0;
+    const iv = setInterval(() => {
+      ticks++;
+      els.forEach((e, i) => {
+        if (ticks < 8 + i * 4) e.textContent = 1 + Math.floor(Math.random() * 3);
+        else { e.textContent = final[i]; e.classList.remove("spin"); }
+      });
+      if (ticks >= 16) {
+        clearInterval(iv);
+        els.forEach((e, i) => { e.textContent = final[i]; e.classList.remove("spin"); });
+        res();
+      }
+    }, 40);
+  });
+}
+function outcomeShoot(eff) {
+  if (eff <= 3) return { dmg: 0, t: "ПРОВАЛ — промах, ствол увело", cls: "bad" };
+  if (eff <= 5) return { dmg: 1, t: "скользящее попадание", cls: "" };
+  if (eff <= 7) return { dmg: 2, t: "попадание", cls: "" };
+  if (eff <= 8) return { dmg: 3, t: "плотное попадание", cls: "good" };
+  return { dmg: 4, t: "ИДЕАЛЬНЫЙ РЕЗОНАНС — критическое попадание", cls: "good" };
+}
+
+/* Ключевая механика гибрида: выстрел ставит игру на паузу целиком (все
+   передвижения замирают, включая противников), крутит барабаны, применяет
+   исход — и снимает паузу. Экономики очков хода нет: вместо неё у каждого
+   бойца — cooldown (время на «прийти в себя» после риска), общий для игрока
+   и для ИИ, так что стрелять непрерывно нельзя ни игроку, ни противнику. */
+async function doShoot(shooter, target) {
+  paused = true;
+  shooter.path = [];
+  $("reso").classList.add("show");
+  $("wholine").textContent = shooter.name + " → " + target.name;
+  const mods = modsFor(shooter, target);
+  const barrels = rollBarrels(shooter);
+  await spinTo(barrels);
+  const raw = barrels[0] + barrels[1] + barrels[2];
+  const mod = sumMods(mods);
+  const eff = raw + mod;
+  const modTxt = mods.length ? "  " + mods.map(m => (m.v > 0 ? "+" : "") + m.v).join(" ") : "";
+  $("sumline").innerHTML = "барабаны <b>" + raw + "</b>" + modTxt + " → итог <b>" + eff + "</b>";
+  const o = outcomeShoot(eff);
+  if (o.dmg > 0) {
+    target.hp -= o.dmg;
+    log(shooter.name + " → " + target.name + ": " + o.t + " (−" + o.dmg + ")", o.cls);
   } else {
-    msg.className = "";
-    msg.textContent = "Ход " + puzzleOrder.filter((v,i)=>v!==i).length + " плиток не на месте.";
+    log(shooter.name + " → " + target.name + ": " + o.t, "bad");
+    if (inHum(Math.round(shooter.fx), Math.round(shooter.fy))) {
+      shooter.hum = Math.min(5, shooter.hum + 1);
+    }
+  }
+  if (target.hp <= 0 && !target.dead) killUnit(target);
+  shooter.cooldown = shooter.reload;
+  await sleep(650);
+  $("reso").classList.remove("show");
+  paused = false;
+  checkEnd();
+  renderRoster();
+}
+
+/* ------------------------------ рэгдолл ----------------------------------- */
+/* Простая точечная физика: голова, грудь, таз, две «ноги» — связаны
+   жёсткими расстояниями (упрощённый verlet), гравитация + случайный
+   импульс от направления попадания. Не претендует на честную 3D-физику
+   (это задача Godot/Unity), только проверяет ощущение «тело падает». */
+function killUnit(u) {
+  u.dead = true;
+  u.hp = 0;
+  log(u.name + " выбывает.", "big");
+  const px = sx(u.fx, u.fy), py = sy(u.fx, u.fy) + TH / 2;
+  const kick = (Math.random() - 0.5) * 3.4;
+  const pts = [
+    { x: px,        y: py - 41, ox: px,        oy: py - 41 },   // голова
+    { x: px,        y: py - 30, ox: px,        oy: py - 30 },   // грудь
+    { x: px,        y: py - 16, ox: px,        oy: py - 16 },   // таз
+    { x: px - 7,    y: py,      ox: px - 7,    oy: py },        // нога L
+    { x: px + 7,    y: py,      ox: px + 7,    oy: py }         // нога R
+  ];
+  pts[0].vx = kick * 1.6; pts[0].vy = -2 - Math.random() * 2;
+  pts[1].vx = kick;       pts[1].vy = -1;
+  const links = [[0,1,11],[1,2,14],[2,3,15],[2,4,15]];
+  ragdolls.push({ pts, links, ground: py + 2, t: 0, col: u.col });
+}
+function stepRagdolls(dt) {
+  for (const r of ragdolls) {
+    r.t += dt;
+    for (const p of r.pts) {
+      if (p.vx === undefined) { p.vx = 0; p.vy = 0; }
+      p.vy += 9.2 * dt;             // гравитация
+      p.x += p.vx * 30 * dt;
+      p.y += p.vy * 30 * dt;
+      if (p.y > r.ground) { p.y = r.ground; p.vy *= -0.15; p.vx *= 0.6; }
+    }
+    for (let iter = 0; iter < 3; iter++) {
+      for (const [ai, bi, len] of r.links) {
+        const a = r.pts[ai], b = r.pts[bi];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.001;
+        const diff = (d - len) / d * 0.5;
+        const ox = dx * diff, oy = dy * diff;
+        a.x += ox; a.y += oy; b.x -= ox; b.y -= oy;
+      }
+    }
+  }
+  ragdolls = ragdolls.filter(r => r.t < 6);
+}
+function drawRagdolls() {
+  for (const r of ragdolls) {
+    const fade = Math.max(0, 1 - Math.max(0, r.t - 4) / 2);
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = r.col; ctx.lineWidth = 6; ctx.lineCap = "round";
+    for (const [ai, bi] of r.links) {
+      const a = r.pts[ai], b = r.pts[bi];
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.fillStyle = r.col;
+    ctx.beginPath(); ctx.arc(r.pts[0].x, r.pts[0].y, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 }
-document.getElementById("btnPuzzle").onclick = () => {
-  document.getElementById("ovPuzzle").classList.add("show");
-  puzzleSolved = false;
-  shufflePuzzle();
-  paintPuzzle();
-  document.getElementById("puzzleMsg").textContent = "Кликните плитку рядом с пустой клеткой, чтобы сдвинуть.";
-  document.getElementById("puzzleMsg").className = "";
-};
-document.getElementById("closePuzzle").onclick = () => document.getElementById("ovPuzzle").classList.remove("show");
 
-/* ------------------------------ верстак / сборка --------------------------- */
-const NEEDED = ["Тибет", "Антарктида", "Европа", "Бермуды"];
-let slotFill = {};
+/* ------------------------------ путь / реал-тайм движение ------------------ */
+function findPath(u, gx, gy) {
+  const key = (x, y) => x + "," + y;
+  const sxp = Math.round(u.fx), syp = Math.round(u.fy);
+  if (!isWalk(gx, gy)) return [];
+  const q = [[sxp, syp]];
+  const seen = new Set([key(sxp, syp)]);
+  const prev = new Map();
+  let found = null;
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === gx && y === gy) { found = [x, y]; break; }
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (seen.has(k) || !isWalk(nx, ny)) continue;
+      seen.add(k); prev.set(k, [x, y]); q.push([nx, ny]);
+    }
+  }
+  if (!found) return [];
+  const path = [];
+  let cur = found;
+  while (cur && !(cur[0] === sxp && cur[1] === syp)) {
+    path.unshift({ x: cur[0], y: cur[1] });
+    cur = prev.get(key(cur[0], cur[1]));
+  }
+  return path;
+}
+function stepUnit(u, dt) {
+  if (!u.path.length) return;
+  const t = u.path[0];
+  const dx = t.x - u.fx, dy = t.y - u.fy;
+  const d = Math.hypot(dx, dy);
+  const step = u.speed * dt;
+  if (d <= step) { u.fx = t.x; u.fy = t.y; u.path.shift(); }
+  else { u.fx += dx / d * step; u.fy += dy / d * step; }
+  u.x = Math.round(u.fx); u.y = Math.round(u.fy);
+}
 
-function fragmentsInInventory() {
-  return items.filter(i => i.cls === "frag");
+/* ------------------------------ ИИ противника (реал-тайм) ------------------ */
+function aiThink(e, dt) {
+  if (e.cooldown > 0) { e.cooldown -= dt; return; }
+  const tgt = players().filter(p => hasLOS(e, p) && dist({x:e.fx,y:e.fy},{x:p.fx,y:p.fy}) <= e.aiRange)
+    .sort((a, b) => dist({x:e.fx,y:e.fy},{x:a.fx,y:a.fy}) - dist({x:e.fx,y:e.fy},{x:b.fx,y:b.fy}))[0];
+  if (tgt) {
+    e.path = [];
+    doShoot(e, tgt);           // ставит игру на паузу сама
+    return;
+  }
+  if (!e.path.length && Math.random() < 0.01) {
+    const gx = Math.max(1, Math.min(W - 2, Math.round(e.fx) + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random()*2))));
+    const gy = Math.max(1, Math.min(H - 2, Math.round(e.fy) + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random()*2))));
+    if (isWalk(gx, gy)) e.path = findPath(e, gx, gy);
+  }
 }
-function refreshBenchAvailability() {
-  document.getElementById("btnBench").disabled = false;
+
+/* ------------------------------ конец сцены -------------------------------- */
+function checkEnd() {
+  if (over) return;
+  if (!enemies().length) finish("Зачищено", "Разведка Трискеля отброшена. Гул на точке никуда не делся — это была не главная угроза миссии.");
+  else if (!players().length) finish("Отряд потерян", "Гибридная схема честно показывает то же, что и пошаговая: гул и пули не прощают спешки.");
 }
-function paintBench() {
-  const picks = document.getElementById("fragPicks");
-  picks.innerHTML = "";
-  fragmentsInInventory().forEach(f => {
-    const b = document.createElement("button");
-    b.textContent = f.name;
-    b.disabled = !!slotFill[f.loc];
-    b.onclick = () => { slotFill[f.loc] = f; paintBench(); };
-    picks.appendChild(b);
+function finish(t, p) {
+  over = true;
+  $("endt").textContent = t; $("endp").textContent = p;
+  $("endcard").style.display = "flex";
+}
+
+/* ------------------------------ отрисовка ----------------------------------- */
+function tileTop(x, y) {
+  const t = tile(x, y);
+  if (t === "#") return "#5d5346";
+  if (t === "c") return "#7a6544";
+  if (t === "E") return "#6d4a4a";
+  return inHum(x, y) ? "#4a3630" : "#3b372f";
+}
+function drawTile(x, y) {
+  const px = sx(x, y), py = sy(x, y);
+  const t = tile(x, y);
+  ctx.beginPath();
+  ctx.moveTo(px, py); ctx.lineTo(px + TW/2, py + TH/2);
+  ctx.lineTo(px, py + TH); ctx.lineTo(px - TW/2, py + TH/2);
+  ctx.closePath();
+  ctx.fillStyle = tileTop(x, y); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 1; ctx.stroke();
+  if (hoverTile.x === x && hoverTile.y === y) {
+    ctx.strokeStyle = "rgba(236,224,196,.85)"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (t === "#" || t === "c" || t === "E") {
+    const hgt = t === "#" ? 30 : (t === "E" ? 24 : 14);
+    const top = py - hgt;
+    ctx.beginPath();
+    ctx.moveTo(px, top); ctx.lineTo(px + TW/2, top + TH/2);
+    ctx.lineTo(px, top + TH); ctx.lineTo(px - TW/2, top + TH/2);
+    ctx.closePath();
+    ctx.fillStyle = t === "#" ? "#6d6252" : (t === "E" ? "#8a5b57" : "#93794f");
+    ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px - TW/2, top + TH/2); ctx.lineTo(px, top + TH);
+    ctx.lineTo(px, py + TH); ctx.lineTo(px - TW/2, py + TH/2);
+    ctx.closePath(); ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px + TW/2, top + TH/2); ctx.lineTo(px, top + TH);
+    ctx.lineTo(px, py + TH); ctx.lineTo(px + TW/2, py + TH/2);
+    ctx.closePath(); ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fill();
+  }
+}
+function drawUnit(u) {
+  const px = sx(u.fx, u.fy), py = sy(u.fx, u.fy) + TH / 2;
+  ctx.beginPath(); ctx.ellipse(px, py, 17, 8, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fill();
+  if (sel === u) {
+    ctx.beginPath(); ctx.ellipse(px, py, 22, 11, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = "#c8a45c"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(px - 8, py - 34, 16, 28, 5) : ctx.rect(px - 8, py - 34, 16, 28);
+  ctx.fillStyle = u.col; ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px, py - 41, 7, 0, Math.PI * 2);
+  ctx.fillStyle = u.col; ctx.fill(); ctx.stroke();
+  const bw = 26;
+  ctx.fillStyle = "#000"; ctx.fillRect(px - bw/2, py - 56, bw, 4);
+  ctx.fillStyle = u.side === "p" ? "#7d9464" : "#a8443a";
+  ctx.fillRect(px - bw/2, py - 56, bw * (u.hp / u.maxHp), 4);
+  if (u.cooldown > 0) {
+    ctx.fillStyle = "#000"; ctx.fillRect(px - bw/2, py - 61, bw, 3);
+    ctx.fillStyle = "#c8a45c"; ctx.fillRect(px - bw/2, py - 61, bw * Math.min(1, u.cooldown / u.reload), 3);
+  }
+}
+function draw() {
+  const r = cv.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) drawTile(x, y);
+  const t = performance.now() / 700;
+  const ex = sx(EMIT.x, EMIT.y), ey = sy(EMIT.x, EMIT.y) + TH / 2 - 20;
+  ctx.beginPath();
+  ctx.arc(ex, ey, 16 + Math.sin(t) * 5, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(200,90,70," + (0.5 + Math.sin(t) * 0.25) + ")";
+  ctx.lineWidth = 2; ctx.stroke();
+  alive().slice().sort((a, b) => (a.fx + a.fy) - (b.fx + b.fy)).forEach(drawUnit);
+  drawRagdolls();
+}
+
+/* ------------------------------ игровой цикл (реал-тайм) ------------------- */
+let last = null;
+function frame(ts) {
+  if (last === null) last = ts;
+  const dt = Math.min(0.05, (ts - last) / 1000);
+  last = ts;
+  if (!paused && !over && !introShowing) {
+    for (const u of players()) { stepUnit(u, dt); if (u.cooldown > 0) u.cooldown -= dt; }
+    for (const e of enemies()) { stepUnit(e, dt); aiThink(e, dt); }
+    for (const p of players()) {
+      if (inHum(Math.round(p.fx), Math.round(p.fy))) {
+        p.hum = Math.min(5, p.hum + dt * 0.4);
+        if (p.hum >= 5 && !p.dead) { p.hp -= 0.02; if (p.hp <= 0) killUnit(p); }
+      } else p.hum = Math.max(0, p.hum - dt * 0.25);
+    }
+    stepRagdolls(dt);
+  }
+  draw();
+  renderRoster();
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------ интерфейс ----------------------------------- */
+function renderRoster() {
+  const box = $("roster"); box.innerHTML = "";
+  units.forEach(u => {
+    if (u.side !== "p") return;
+    const d = document.createElement("div");
+    d.className = "unit" + (sel === u ? " sel" : "") + (u.dead ? " dead" : "");
+    d.innerHTML =
+      '<div class="nm">' + u.name + ' <small>' + u.role + '</small></div>' +
+      '<div class="bar hp"><i style="width:' + (100 * Math.max(0,u.hp) / u.maxHp) + '%"></i></div>' +
+      '<div class="bar hum"><i style="width:' + (100 * u.hum / 5) + '%"></i></div>';
+    if (!u.dead) d.onclick = () => { sel = u; };
+    box.appendChild(d);
   });
-  const slots = document.getElementById("slots");
-  slots.innerHTML = "";
-  NEEDED.forEach(loc => {
-    const s = document.createElement("div");
-    s.className = "slot" + (slotFill[loc] ? " filled" : "");
-    s.textContent = slotFill[loc] ? slotFill[loc].name : loc;
-    slots.appendChild(s);
-  });
-  const done = NEEDED.every(loc => slotFill[loc]);
-  document.getElementById("btnAssemble").disabled = !done;
 }
-document.getElementById("btnBench").onclick = () => {
-  document.getElementById("ovBench").classList.add("show");
-  paintBench();
+
+cv.addEventListener("mousemove", e => {
+  const r = cv.getBoundingClientRect();
+  hoverTile = pick(e.clientX - r.left, e.clientY - r.top);
+});
+cv.addEventListener("click", e => {
+  if (paused || over || introShowing) return;
+  const r = cv.getBoundingClientRect();
+  const t = pick(e.clientX - r.left, e.clientY - r.top);
+  const u = unitAt(t.x, t.y);
+  if (u && u.side === "e" && sel) {
+    if (!hasLOS(sel, u)) { log("Нет линии огня.", "bad"); return; }
+    if (dist({x:sel.fx,y:sel.fy},{x:u.fx,y:u.fy}) > 9) { log("Слишком далеко.", "bad"); return; }
+    if (sel.cooldown > 0) { log(sel.name + " ещё не готов стрелять.", "bad"); return; }
+    doShoot(sel, u);
+    return;
+  }
+  if (u && u.side === "p") { sel = u; return; }
+  if (sel && isWalk(t.x, t.y)) sel.path = findPath(sel, t.x, t.y);
+});
+
+/* ------------------------------ текстовые вставки (3 миссии) --------------- */
+const CARDS = [
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 1", title: "Прибытие", sub: "База Аненербе · весна 1938",
+    lines: [
+      "Кессель прибывает на базу поздней весной 1938-го. Знакомство с отрядом:" +
+      " Грета (медик — легенда), Ансельм, Дитер, Курт. Виктор смотрит на всех как на часть эксперимента.",
+      "«Вы ищете Врата. Всё остальное — шум», — Вернер Хайнц, штандартенфюрер," +
+      " командует дистанционно и лично в поле не появится ещё восемь миссий."
+    ] },
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 4", title: "Святилище", sub: "Тибет, Лхаса · осень 1938",
+    lines: [
+      "Монахи веками говорили о гуле и «свете бога». Отряд им не поверил —" +
+      " до первых симптомов на подходе к святилищу.",
+      "Излучатель отключён — первый в мире задокументированный успех." +
+      " Тензин, ближе всех подошедший к источнику гула, не переживает эту победу."
+    ] },
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 9", title: "Бермудский вертекс", sub: "Бермудский архипелаг · 1939",
+    lines: [
+      "Самый мощный из трёх излучателей. На эту операцию лично прибывает Вернер —" +
+      " впервые за всё время.",
+      "Гул, который в Тибете убил Тензина, здесь доводит человека до полного" +
+      " беспамятства. Отряд входит вшестером. Выйдут не все."
+    ] }
+];
+let cardIdx = 0;
+let introShowing = true;
+function paintCard() {
+  const c = CARDS[cardIdx];
+  $("chStamp").textContent = c.stamp;
+  $("chTitle").textContent = c.title;
+  $("chSub").textContent = c.sub;
+  $("chBody").innerHTML = c.lines.map(l => "<p>" + l + "</p>").join("");
+  $("chGo").textContent = cardIdx < CARDS.length - 1 ? "— нажмите, чтобы читать дальше —" : "— нажмите, чтобы принять управление —";
+  $("chDots").innerHTML = CARDS.map((_, i) => '<i class="' + (i === cardIdx ? "on" : "") + '"></i>').join("");
+  const grad = "linear-gradient(rgba(8,7,6,.55),rgba(8,7,6,.85)), " +
+    "repeating-linear-gradient(115deg, #241f19 0 3px, #1c1712 3px 7px)";
+  $("chron").style.backgroundImage = grad;
+}
+$("chron").onclick = () => {
+  cardIdx++;
+  if (cardIdx >= CARDS.length) {
+    $("chron").style.display = "none";
+    introShowing = false;
+    log("— гибридный режим включён —", "big");
+    log("Виктор: «Прибор не делает нас сильнее. Он только показывает правду».");
+    return;
+  }
+  paintCard();
 };
-document.getElementById("closeBench").onclick = () => document.getElementById("ovBench").classList.remove("show");
-document.getElementById("btnAssemble").onclick = () => {
-  // убираем 4 обломка из инвентаря, добавляем собранный диск
-  NEEDED.forEach(loc => {
-    const f = slotFill[loc];
-    items = items.filter(i => i.id !== f.id);
-  });
-  slotFill = {};
-  addItem({ id:"disk4", name:"Резонансный индикатор — 4-й диск (собран)", cls:"built", shape:"2x2" });
-  const msg = document.getElementById("benchMsg");
-  msg.className = "win";
-  msg.textContent = "Четыре обломка сошлись в один диск. Прибор больше не молчит.";
-  document.getElementById("btnAssemble").disabled = true;
-  document.getElementById("fragPicks").innerHTML = "";
-  document.getElementById("slots").querySelectorAll(".slot").forEach(s => s.classList.remove("filled"));
-};
+paintCard();
+
+window.addEventListener("resize", resize);
+resize();
+renderRoster();
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>
