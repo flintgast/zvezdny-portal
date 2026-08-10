@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>«Звёздный портал» — T-002: мини-игры (инвентарь, тайник-загадка, сборка артефакта)</title>
+<style>
+  :root{
+    --ink:#0d0c0a; --panel:#16130f; --panel2:#1e1a14;
+    --brass:#c8a45c; --brass-d:#8a7038; --steel:#3a3a3c;
+    --paper:#d8cfba; --muted:#8a8171; --red:#a8443a; --blue:#7fa8bd; --green:#7d9464;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    -webkit-font-smoothing:antialiased}
+  h1{font-size:15px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--brass);margin:0 0 3px;font-family:"Helvetica Neue",Arial,sans-serif}
+  #wrap{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
+  #top p{color:var(--muted);font-size:12.5px;line-height:1.6;max-width:760px;margin:0 0 18px}
+  .row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  .card{background:var(--panel);border:1px solid #2b251c;border-radius:4px;padding:16px}
+  .card h2{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--brass);font-weight:600;font-family:"Helvetica Neue",Arial,sans-serif}
+  .hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:0 0 10px}
+  button{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;padding:9px 14px;background:var(--panel2);color:var(--paper);
+    border:1px solid #3a3227;cursor:pointer;transition:.12s;border-radius:2px}
+  button:hover:not(:disabled){background:#302819;border-color:var(--brass-d)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.go{background:var(--brass);color:#17130c;border-color:var(--brass);font-weight:600}
+  button.go:hover:not(:disabled){background:#d8b46c}
+  /* ---------------- инвентарь ---------------- */
+  #grid{position:relative;background:#0f0d0a;border:2px solid #2b251c;border-radius:3px;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+  }
+  .item{position:absolute;border-radius:4px;display:flex;align-items:center;justify-content:center;
+    text-align:center;font-family:"Helvetica Neue",Arial,sans-serif;font-size:9px;
+    letter-spacing:.01em;line-height:1.2;color:#20180d;font-weight:700;cursor:grab;
+    user-select:none;padding:3px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.5)}
+  .item.dragging{cursor:grabbing;opacity:.88;z-index:50;box-shadow:0 10px 24px rgba(0,0,0,.7)}
+  .item.frag{background:linear-gradient(#8a5b57,#6a4340);color:#f2e6d4}
+  .item.gear{background:linear-gradient(#9d7f42,#7a6032);color:#241b0c}
+  .item.doc{background:linear-gradient(#7fa8bd,#5f8298);color:#0d1a20}
+  .item.built{background:linear-gradient(#c8a45c,#9d7f42);color:#1d1608;font-weight:700}
+  .ghost{position:absolute;border-radius:4px;pointer-events:none;z-index:5}
+  .ghost.ok{background:rgba(127,148,100,.30);outline:1px solid rgba(159,189,127,.7)}
+  .ghost.bad{background:rgba(168,68,58,.30);outline:1px solid rgba(200,110,95,.7)}
+  #invLog{font-size:11px;color:var(--muted);margin-top:10px;min-height:16px}
+  /* ---------------- оверлеи ---------------- */
+  .overlay{position:fixed;inset:0;background:rgba(6,5,4,.88);display:none;
+    align-items:center;justify-content:center;z-index:100}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid #3a3227;border-radius:6px;padding:26px;
+    max-width:520px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+  .modal h2{margin:0 0 4px}
+  .modal .sub{font-size:11.5px;color:var(--muted);margin-bottom:16px}
+  .modal .close{float:right;background:none;border:none;color:var(--muted);font-size:18px;
+    cursor:pointer;padding:0 4px}
+  /* ---------------- пятнашки ---------------- */
+  #puzzle{display:grid;grid-template-columns:repeat(3,96px);grid-template-rows:repeat(3,96px);
+    gap:3px;margin:0 auto 14px;width:294px}
+  .ptile{width:96px;height:96px;background-repeat:no-repeat;background-size:294px 294px;
+    cursor:pointer;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);
+    transition:transform .08s}
+  .ptile:hover{filter:brightness(1.15)}
+  .ptile.empty{visibility:hidden}
+  #puzzleMsg{text-align:center;font-size:12px;color:var(--muted);min-height:18px}
+  #puzzleMsg.win{color:var(--green);font-weight:700}
+  /* ---------------- верстак ---------------- */
+  .slots{display:flex;gap:12px;justify-content:center;margin:16px 0}
+  .slot{width:96px;height:64px;border:2px dashed #4a3d2c;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    font-family:"Helvetica Neue",Arial,sans-serif;font-size:9.5px;color:var(--muted);
+    text-align:center;padding:4px}
+  .slot.filled{border-style:solid;border-color:var(--brass);background:rgba(200,164,92,.12);color:var(--paper)}
+  #fragPicks{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+  #benchMsg{text-align:center;font-size:12px;color:var(--muted);min-height:18px}
+  #benchMsg.win{color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <h1>T-002 · три мини-игры на пробу</h1>
+    <p>Спайк по итогам разговора: гибрид «пауза на выстрел» — не то, что нужно (правильная версия —
+      ниже отдельным пунктом в задаче), а вот мини-игры для режима путешествия — да. Здесь три из
+      пяти задуманных: <b>инвентарь-сортировка</b>, <b>загадка-тайник</b> («пятнашки» открывают
+      манускрипт) и <b>сборка предмета из частей, разбросанных по миру</b> — последнее прямо
+      реализует идею «артефактов-обломков» из лор-библии v1.6 (раздел 4.4). Крафт и картография
+      с метками/тайниками/засадами — не здесь, ждут своей очереди.</p>
+  </div>
+
+  <div class="row">
+    <div class="card" style="flex:0 0 auto">
+      <h2>Инвентарь-сортировка</h2>
+      <p class="hint">Перетаскивайте предметы (зажать и вести мышью). Клавиша <b>R</b> во время
+        перетаскивания — повернуть предмет на 90°. Зелёная подсветка — можно положить, красная —
+        не влезает или занято.</p>
+      <div id="grid"></div>
+      <div id="invLog"></div>
+    </div>
+
+    <div class="card" style="flex:1;min-width:280px">
+      <h2>Что дальше открывает прогресс</h2>
+      <p class="hint">Обломки Тибета, Антарктиды и Европы уже в рюкзаке. Обломка Бермуд там нет —
+        его прячет тайник. Без всех четырёх верстак не соберёт диск.</p>
+      <button class="go" id="btnPuzzle">Открыть древний тайник (загадка)</button>
+      <button id="btnBench" style="margin-left:8px">Верстак — собрать индикатор</button>
+      <p class="hint" style="margin-top:16px">Порядок специально такой: тайник → фрагмент Бермуд →
+        верстак. Проверяем, что мини-игры не декоративные, а держат прогрессию квеста.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= пятнашки / тайник ================= -->
+<div class="overlay" id="ovPuzzle">
+  <div class="modal">
+    <button class="close" id="closePuzzle">✕</button>
+    <h2>Древний тайник</h2>
+    <div class="sub">Соберите узор из семи символов — механизм тайника читает форму, не силу.</div>
+    <div id="puzzle"></div>
+    <div id="puzzleMsg">Кликните плитку рядом с пустой клеткой, чтобы сдвинуть.</div>
+  </div>
+</div>
+
+<!-- ================= верстак ================= -->
+<div class="overlay" id="ovBench">
+  <div class="modal">
+    <button class="close" id="closeBench">✕</button>
+    <h2>Верстак Виктора</h2>
+    <div class="sub">Четыре обломка одной технологии — по одному с каждой точки маршрута.</div>
+    <div id="fragPicks"></div>
+    <div class="slots" id="slots"></div>
+    <div style="text-align:center">
+      <button class="go" id="btnAssemble" disabled>Собрать</button>
+    </div>
+    <div id="benchMsg"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   T-002 · три мини-игры: инвентарь, тайник-«пятнашки», сборка из обломков.
+   Всё на DOM (не canvas) — для UI-механик это проще и надёжнее таскать.
+   ========================================================================== */
+
+/* ------------------------------ инвентарь --------------------------------- */
+const COLS = 8, ROWS = 5, CELL = 56;
+
+// форма — список [dx,dy] клеток от левого верхнего угла предмета
+const SHAPES = {
+  "1x1": [[0,0]],
+  "2x1": [[0,0],[1,0]],
+  "1x2": [[0,0],[0,1]],
+  "2x2": [[0,0],[1,0],[0,1],[1,1]]
+};
+
+let items = [
+  { id:"frag_tibet",  name:"Обломок · Тибет",      cls:"frag", shape:"2x1", gx:0, gy:0, loc:"Тибет" },
+  { id:"frag_antar",  name:"Обломок · Антарктида",  cls:"frag", shape:"2x1", gx:0, gy:1, loc:"Антарктида" },
+  { id:"frag_europe", name:"Обломок · Европа",      cls:"frag", shape:"1x2", gx:3, gy:0, loc:"Европа" },
+  { id:"comp",        name:"Компенсатор",           cls:"gear", shape:"1x1", gx:5, gy:0 },
+  { id:"ammo",        name:"Патроны",               cls:"gear", shape:"1x1", gx:6, gy:0 },
+  { id:"med",         name:"Медикамент",            cls:"gear", shape:"1x2", gx:6, gy:1 },
+  { id:"radio",       name:"Рация",                 cls:"gear", shape:"2x2", gx:0, gy:3 }
+];
+let gained = [];   // предметы, добавленные по ходу демо (манускрипт, обломок Бермуд, диск)
+
+const gridEl = document.getElementById("grid");
+gridEl.style.width  = (COLS * CELL) + "px";
+gridEl.style.height = (ROWS * CELL) + "px";
+gridEl.style.backgroundSize = CELL + "px " + CELL + "px";
+
+function cellsOf(shape, gx, gy) {
+  return SHAPES[shape].map(([dx, dy]) => [gx + dx, gy + dy]);
+}
+function fits(shape, gx, gy, ignoreId) {
+  for (const [x, y] of cellsOf(shape, gx, gy)) {
+    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
+  }
+  for (const it of items) {
+    if (it.id === ignoreId) continue;
+    const occ = new Set(cellsOf(it.shape, it.gx, it.gy).map(c => c.join(",")));
+    for (const c of cellsOf(shape, gx, gy)) if (occ.has(c.join(","))) return false;
+  }
+  return true;
+}
+function rotateShapeName(s) {
+  return s === "2x1" ? "1x2" : s === "1x2" ? "2x1" : s === "2x2" ? "2x2" : "1x1";
+}
+
+let dragging = null, dragDX = 0, dragDY = 0, dragShape = null, dragGX = 0, dragGY = 0;
+let ghostEl = null;
+
+function paintInventory() {
+  gridEl.querySelectorAll(".item").forEach(e => e.remove());
+  items.forEach(it => {
+    const [w, h] = shapeSize(it.shape);
+    const d = document.createElement("div");
+    d.className = "item " + it.cls + (dragging === it ? " dragging" : "");
+    d.style.left = (it.gx * CELL) + "px";
+    d.style.top  = (it.gy * CELL) + "px";
+    d.style.width  = (w * CELL - 4) + "px";
+    d.style.height = (h * CELL - 4) + "px";
+    d.textContent = it.name;
+    d.dataset.id = it.id;
+    d.addEventListener("mousedown", onGrab);
+    gridEl.appendChild(d);
+  });
+}
+function shapeSize(shape) {
+  const cells = SHAPES[shape];
+  const w = Math.max(...cells.map(c => c[0])) + 1;
+  const h = Math.max(...cells.map(c => c[1])) + 1;
+  return [w, h];
+}
+
+function onGrab(e) {
+  const id = e.currentTarget.dataset.id;
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  dragging = it;
+  dragShape = it.shape;
+  const r = gridEl.getBoundingClientRect();
+  dragDX = e.clientX - (r.left + it.gx * CELL);
+  dragDY = e.clientY - (r.top + it.gy * CELL);
+  ghostEl = document.createElement("div");
+  ghostEl.className = "ghost";
+  gridEl.appendChild(ghostEl);
+  paintInventory();
+  document.addEventListener("mousemove", onDrag);
+  document.addEventListener("mouseup", onDrop);
+  document.addEventListener("keydown", onKeyRotate);
+  e.preventDefault();
+}
+function onKeyRotate(e) {
+  if (!dragging || e.key.toLowerCase() !== "r") return;
+  dragShape = rotateShapeName(dragShape);
+  updateGhost(lastMouseEvent);
+}
+let lastMouseEvent = null;
+function onDrag(e) {
+  lastMouseEvent = e;
+  const el = gridEl.querySelector('.item[data-id="' + dragging.id + '"]');
+  const r = gridEl.getBoundingClientRect();
+  const px = e.clientX - r.left - dragDX;
+  const py = e.clientY - r.top - dragDY;
+  if (el) { el.style.left = px + "px"; el.style.top = py + "px"; }
+  updateGhost(e);
+}
+function updateGhost(e) {
+  if (!e) return;
+  const r = gridEl.getBoundingClientRect();
+  const gx = Math.round((e.clientX - r.left - dragDX) / CELL);
+  const gy = Math.round((e.clientY - r.top - dragDY) / CELL);
+  dragGX = gx; dragGY = gy;
+  const ok = fits(dragShape, gx, gy, dragging.id);
+  const [w, h] = shapeSize(dragShape);
+  ghostEl.className = "ghost " + (ok ? "ok" : "bad");
+  ghostEl.style.left = (gx * CELL) + "px";
+  ghostEl.style.top  = (gy * CELL) + "px";
+  ghostEl.style.width  = (w * CELL - 4) + "px";
+  ghostEl.style.height = (h * CELL - 4) + "px";
+}
+function onDrop(e) {
+  document.removeEventListener("mousemove", onDrag);
+  document.removeEventListener("mouseup", onDrop);
+  document.removeEventListener("keydown", onKeyRotate);
+  if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+  const ok = fits(dragShape, dragGX, dragGY, dragging.id);
+  const log = document.getElementById("invLog");
+  if (ok) {
+    dragging.shape = dragShape; dragging.gx = dragGX; dragging.gy = dragGY;
+    log.textContent = dragging.name + " — переложено.";
+  } else {
+    log.textContent = "Не влезает — предмет остался на месте.";
+  }
+  dragging = null;
+  paintInventory();
+}
+function addItem(def) {
+  // ищем первое свободное место под форму предмета
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (fits(def.shape, x, y, null)) { def.gx = x; def.gy = y; items.push(def); paintInventory(); return true; }
+  }
+  return false;
+}
+paintInventory();
+
+/* ------------------------------ пятнашки / тайник -------------------------- */
+const N = 3; // 3x3, восемь плиток + пустая
+let puzzleOrder = [];  // индекс "правильной" позиции в каждой ячейке текущей раскладки
+let emptyIdx = N * N - 1;
+let puzzleSolved = false;
+
+// процедурный фон-«символ» вместо картинки: SVG с кольцом рун, data URI
+const RUNE_SVG = encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">' +
+  '<rect width="300" height="300" fill="#241f19"/>' +
+  '<circle cx="150" cy="150" r="118" fill="none" stroke="#8a7038" stroke-width="3"/>' +
+  '<circle cx="150" cy="150" r="70" fill="none" stroke="#c8a45c" stroke-width="2"/>' +
+  Array.from({length:7}).map((_,i)=>{
+    const a = (Math.PI*2/7)*i - Math.PI/2;
+    const x = 150+Math.cos(a)*94, y = 150+Math.sin(a)*94;
+    return '<circle cx="'+x+'" cy="'+y+'" r="9" fill="#d8cfba"/>' +
+           '<line x1="150" y1="150" x2="'+x+'" y2="'+y+'" stroke="#6a5a3a" stroke-width="1.5"/>';
+  }).join('') +
+  '<circle cx="150" cy="150" r="14" fill="#a8443a"/>' +
+  '</svg>'
+);
+const RUNE_URL = "data:image/svg+xml," + RUNE_SVG;
+
+function puzzleHomePos(i) { return [i % N, Math.floor(i / N)]; }
+function shufflePuzzle() {
+  puzzleOrder = Array.from({length: N*N}, (_, i) => i);
+  emptyIdx = N * N - 1;
+  // случайные валидные ходы от решённого состояния — гарантия разрешимости
+  for (let s = 0; s < 120; s++) {
+    const [ex, ey] = puzzleHomePosOfEmpty();
+    const moves = [[1,0],[-1,0],[0,1],[0,-1]]
+      .map(([dx,dy]) => [ex+dx, ey+dy])
+      .filter(([x,y]) => x>=0 && y>=0 && x<N && y<N);
+    const [tx, ty] = moves[Math.floor(Math.random()*moves.length)];
+    swapPuzzle(ty*N+tx);
+  }
+}
+function puzzleHomePosOfEmpty() {
+  const pos = puzzleOrder.indexOf(N*N-1);
+  return [pos % N, Math.floor(pos / N)];
+}
+function swapPuzzle(cellIdx) {
+  const emptyPos = puzzleOrder.indexOf(N*N-1);
+  [puzzleOrder[cellIdx], puzzleOrder[emptyPos]] = [puzzleOrder[emptyPos], puzzleOrder[cellIdx]];
+}
+function adjacentToEmpty(cellIdx) {
+  const emptyPos = puzzleOrder.indexOf(N*N-1);
+  const ex = emptyPos % N, ey = Math.floor(emptyPos / N);
+  const cx = cellIdx % N, cy = Math.floor(cellIdx / N);
+  return Math.abs(ex-cx) + Math.abs(ey-cy) === 1;
+}
+function paintPuzzle() {
+  const box = document.getElementById("puzzle");
+  box.innerHTML = "";
+  for (let cell = 0; cell < N*N; cell++) {
+    const tileVal = puzzleOrder[cell];
+    const d = document.createElement("div");
+    d.className = "ptile" + (tileVal === N*N-1 ? " empty" : "");
+    const [hx, hy] = puzzleHomePos(tileVal);
+    d.style.backgroundImage = "url(" + RUNE_URL + ")";
+    d.style.backgroundPosition = (-hx*96) + "px " + (-hy*96) + "px";
+    d.onclick = () => {
+      if (puzzleSolved) return;
+      if (!adjacentToEmpty(cell)) return;
+      swapPuzzle(cell);
+      paintPuzzle();
+      checkPuzzleWin();
+    };
+    box.appendChild(d);
+  }
+}
+function checkPuzzleWin() {
+  const solved = puzzleOrder.every((v, i) => v === i);
+  const msg = document.getElementById("puzzleMsg");
+  if (solved) {
+    puzzleSolved = true;
+    msg.className = "win";
+    msg.textContent = "Символ сошёлся. Тайник открыт: манускрипт и обломок Бермуд — в рюкзаке.";
+    if (!gained.includes("manuscript_bermuda")) {
+      gained.push("manuscript_bermuda");
+      addItem({ id:"manuscript_bermuda", name:"Манускрипт · Бермуды", cls:"doc", shape:"1x1" });
+      addItem({ id:"frag_bermuda", name:"Обломок · Бермуды", cls:"frag", shape:"2x1", loc:"Бермуды" });
+      refreshBenchAvailability();
+    }
+  } else {
+    msg.className = "";
+    msg.textContent = "Ход " + puzzleOrder.filter((v,i)=>v!==i).length + " плиток не на месте.";
+  }
+}
+document.getElementById("btnPuzzle").onclick = () => {
+  document.getElementById("ovPuzzle").classList.add("show");
+  puzzleSolved = false;
+  shufflePuzzle();
+  paintPuzzle();
+  document.getElementById("puzzleMsg").textContent = "Кликните плитку рядом с пустой клеткой, чтобы сдвинуть.";
+  document.getElementById("puzzleMsg").className = "";
+};
+document.getElementById("closePuzzle").onclick = () => document.getElementById("ovPuzzle").classList.remove("show");
+
+/* ------------------------------ верстак / сборка --------------------------- */
+const NEEDED = ["Тибет", "Антарктида", "Европа", "Бермуды"];
+let slotFill = {};
+
+function fragmentsInInventory() {
+  return items.filter(i => i.cls === "frag");
+}
+function refreshBenchAvailability() {
+  document.getElementById("btnBench").disabled = false;
+}
+function paintBench() {
+  const picks = document.getElementById("fragPicks");
+  picks.innerHTML = "";
+  fragmentsInInventory().forEach(f => {
+    const b = document.createElement("button");
+    b.textContent = f.name;
+    b.disabled = !!slotFill[f.loc];
+    b.onclick = () => { slotFill[f.loc] = f; paintBench(); };
+    picks.appendChild(b);
+  });
+  const slots = document.getElementById("slots");
+  slots.innerHTML = "";
+  NEEDED.forEach(loc => {
+    const s = document.createElement("div");
+    s.className = "slot" + (slotFill[loc] ? " filled" : "");
+    s.textContent = slotFill[loc] ? slotFill[loc].name : loc;
+    slots.appendChild(s);
+  });
+  const done = NEEDED.every(loc => slotFill[loc]);
+  document.getElementById("btnAssemble").disabled = !done;
+}
+document.getElementById("btnBench").onclick = () => {
+  document.getElementById("ovBench").classList.add("show");
+  paintBench();
+};
+document.getElementById("closeBench").onclick = () => document.getElementById("ovBench").classList.remove("show");
+document.getElementById("btnAssemble").onclick = () => {
+  // убираем 4 обломка из инвентаря, добавляем собранный диск
+  NEEDED.forEach(loc => {
+    const f = slotFill[loc];
+    items = items.filter(i => i.id !== f.id);
+  });
+  slotFill = {};
+  addItem({ id:"disk4", name:"Резонансный индикатор — 4-й диск (собран)", cls:"built", shape:"2x2" });
+  const msg = document.getElementById("benchMsg");
+  msg.className = "win";
+  msg.textContent = "Четыре обломка сошлись в один диск. Прибор больше не молчит.";
+  document.getElementById("btnAssemble").disabled = true;
+  document.getElementById("fragPicks").innerHTML = "";
+  document.getElementById("slots").querySelectorAll(".slot").forEach(s => s.classList.remove("filled"));
+};
+</script>
+</body>
+</html>

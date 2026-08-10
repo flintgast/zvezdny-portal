@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>«Звёздный портал» — T-002: гибридное управление, Бермудский вертекс, 1938</title>
+<style>
+  :root{
+    --ink:#0d0c0a;
+    --panel:#16130f;
+    --panel2:#1e1a14;
+    --brass:#c8a45c;
+    --brass-d:#8a7038;
+    --steel:#3a3a3c;
+    --paper:#d8cfba;
+    --muted:#8a8171;
+    --red:#a8443a;
+    --blue:#7fa8bd;
+    --green:#7d9464;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  #app{display:flex;height:100vh;width:100vw}
+  #stage{position:relative;flex:1;min-width:0;background:
+    radial-gradient(ellipse at 50% 35%, #1a1713 0%, #0d0c0a 70%)}
+  canvas{display:block;width:100%;height:100%}
+  #side{width:310px;flex:0 0 310px;background:var(--panel);
+    border-left:1px solid #2b251c;display:flex;flex-direction:column;overflow:hidden}
+  .sec{padding:10px 14px;border-bottom:1px solid #2b251c}
+  .sec h3{margin:0 0 8px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--brass);font-weight:600;font-family:"Helvetica Neue",Arial,sans-serif}
+  .unit{padding:8px 10px;margin-bottom:6px;background:var(--panel2);
+    border-left:3px solid #444;cursor:pointer;transition:.12s}
+  .unit:hover{background:#252017}
+  .unit.sel{border-left-color:var(--brass);background:#2a2318}
+  .unit.dead{opacity:.35;cursor:default}
+  .unit .nm{font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
+  .unit .nm small{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;
+    letter-spacing:.1em;color:var(--muted)}
+  .bar{height:5px;background:#000;margin-top:5px;position:relative;overflow:hidden}
+  .bar i{display:block;height:100%;transition:width .25s}
+  .bar.hp i{background:var(--green)}
+  .bar.hum i{background:var(--red)}
+  #note{font-size:11.5px;line-height:1.6;color:var(--muted)}
+  #note b{color:var(--paper)}
+  /* ---------- резонатор (пауза) ---------- */
+  #reso{position:absolute;right:16px;bottom:16px;width:246px;
+    background:linear-gradient(#211d17,#141110);
+    border:2px solid #3b3125;border-radius:5px;padding:11px;
+    box-shadow:0 12px 40px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.05);
+    display:none}
+  #reso.show{display:block}
+  #reso .plate{background:linear-gradient(#c9a961,#9d7f42);color:#221a0c;
+    font-family:"Helvetica Neue",Arial,sans-serif;text-align:center;
+    padding:5px 4px;border:1px solid #6d5527;border-radius:2px;
+    font-size:10.5px;letter-spacing:.11em;line-height:1.35;font-weight:700}
+  #reso .plate small{display:block;font-weight:400;font-size:8.5px;letter-spacing:.09em;
+    opacity:.82;margin-top:1px}
+  #reso .win{margin-top:10px;background:#0a0908;border:2px solid #4a3d2c;border-radius:3px;
+    padding:9px;display:flex;align-items:center;gap:10px;
+    box-shadow:inset 0 3px 12px rgba(0,0,0,.9)}
+  .barrels{display:flex;gap:5px}
+  .barrel{width:34px;height:44px;border-radius:3px;
+    background:linear-gradient(#3a352c 0%,#191712 18%,#26221b 50%,#191712 82%,#3a352c 100%);
+    border:1px solid #57493a;display:flex;align-items:center;justify-content:center;
+    font-family:"Helvetica Neue",Arial,sans-serif;font-size:22px;font-weight:700;
+    color:#e2d6b8;text-shadow:0 1px 2px #000}
+  .barrel.spin{color:#8d8474}
+  #reso .sum{margin-top:9px;text-align:center;font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:10.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase;
+    min-height:15px}
+  #reso .sum b{color:var(--brass);font-size:13px}
+  #reso .who{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10px;letter-spacing:.08em;
+    color:var(--muted);text-align:center;margin-top:6px}
+  /* ---------- лог ---------- */
+  #log{position:absolute;left:14px;bottom:14px;width:390px;max-height:190px;overflow:hidden;
+    font-size:12.5px;line-height:1.5;pointer-events:none;
+    display:flex;flex-direction:column-reverse}
+  #log div{margin-top:3px;text-shadow:0 1px 3px #000;opacity:.92}
+  #log .big{color:var(--brass);font-size:13.5px}
+  #log .bad{color:#c9705f}
+  #log .good{color:#9fbd7f}
+  /* ---------- хроника / текстовая вставка на фоне ---------- */
+  #chron{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;background-size:cover;background-position:center;
+    transition:background-image .3s}
+  #chron::before{content:'';position:absolute;inset:0;background:rgba(8,7,6,.72)}
+  #chron .inner{position:relative;max-width:640px;padding:34px;text-align:center;filter:contrast(1.05)}
+  #chron .stamp{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;
+    letter-spacing:.42em;color:#c8bda0;margin-bottom:20px}
+  #chron h1{font-size:28px;margin:0 0 6px;letter-spacing:.05em;color:#f1e8d2;font-weight:400}
+  #chron .sub{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.2em;
+    color:#a89d80;text-transform:uppercase;margin-bottom:18px}
+  #chron p{font-size:14.5px;line-height:1.8;color:#d9cfb6;margin:0 0 9px;text-shadow:0 2px 6px #000}
+  #chron .go{margin-top:24px;font-family:"Helvetica Neue",Arial,sans-serif;font-size:10.5px;
+    letter-spacing:.3em;color:#cdbf9c;animation:pulse 2s infinite}
+  #chron .dots{position:relative;margin-top:16px;display:flex;gap:7px;justify-content:center}
+  #chron .dots i{width:6px;height:6px;border-radius:50%;background:#5f5849}
+  #chron .dots i.on{background:var(--brass)}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  #chron .grain{position:absolute;inset:0;pointer-events:none;opacity:.14;
+    background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 3px)}
+  .leg{font-size:11.5px;line-height:1.7;color:var(--muted)}
+  .leg i{display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:baseline}
+  #banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;letter-spacing:.26em;
+    color:#6f6757;text-transform:uppercase;pointer-events:none}
+  #endcard{position:absolute;inset:0;background:rgba(6,5,4,.93);z-index:60;
+    display:none;align-items:center;justify-content:center;text-align:center}
+  #endcard h2{font-size:26px;font-weight:400;letter-spacing:.06em;color:var(--brass);margin:0 0 12px}
+  #endcard p{color:#8f8571;font-size:14px;max-width:430px;line-height:1.7;margin:0 auto}
+  #hint{position:absolute;left:14px;top:40px;font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:10.5px;letter-spacing:.06em;line-height:1.7;color:#7d7460;max-width:300px}
+  #hint b{color:var(--brass)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="banner">T-002 · гибрид: реал-тайм + пауза на резонатор · Бермуды · 1938</div>
+    <div id="hint">Клик по земле — идти (реал-тайм, как в Diablo 2).<br>
+      Клик по врагу в зоне видимости — <b>выстрел</b>: время останавливается,
+      крутятся барабаны, потом бой продолжается.<br>
+      Смерть — не исчезновение, а рэгдолл: тело падает по физике.</div>
+    <div id="log"></div>
+
+    <div id="reso">
+      <div class="plate">RESONANZ&nbsp;ANZEIGER
+        <small>V. N. — VERSUCH 3 · артефакт, не изобретение</small>
+      </div>
+      <div class="win">
+        <div class="barrels">
+          <div class="barrel" id="b0">1</div>
+          <div class="barrel" id="b1">2</div>
+          <div class="barrel" id="b2">3</div>
+        </div>
+      </div>
+      <div class="sum" id="sumline">—</div>
+      <div class="who" id="wholine">—</div>
+    </div>
+
+    <div id="chron">
+      <div class="grain"></div>
+      <div class="inner">
+        <div class="stamp" id="chStamp">ГЕХАЙМ · АНЕНЕРБЕ · ФИЛЬМОТЕКА</div>
+        <h1 id="chTitle"></h1>
+        <div class="sub" id="chSub"></div>
+        <div id="chBody"></div>
+        <div class="go" id="chGo">— нажмите, чтобы продолжить —</div>
+        <div class="dots" id="chDots"></div>
+      </div>
+    </div>
+
+    <div id="endcard"><div><h2 id="endt"></h2><p id="endp"></p></div></div>
+  </div>
+
+  <aside id="side">
+    <div class="sec">
+      <h3>Отряд</h3>
+      <div id="roster"></div>
+    </div>
+    <div class="sec">
+      <h3>Что это</h3>
+      <div id="note">
+        Спайк к задаче <b>T-002</b>: проверяем гибридное управление
+        (свободное перемещение в реальном времени + пауза-бросок индикатора
+        на риске) и рэгдолл на смерти. Карта — черновая, тон Бермуд
+        (раздел 4.5 лор-библии). Три текстовые вставки в начале — по одной
+        на миссии 1, 4 и 9 (см. заявку в канон в тексте задачи).
+      </div>
+    </div>
+    <div class="sec">
+      <h3>Обозначения</h3>
+      <div class="leg">
+        <i style="background:#5d5346"></i>стена — полное укрытие<br>
+        <i style="background:#7a6544"></i>ящик — низкое укрытие<br>
+        <i style="background:#7e3b34"></i>зона гула излучателя
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   T-002 · спайк «гибридное управление»
+   Реал-тайм перемещение (клик-и-иди) + пауза на бросок резонатора при риске
+   (выстрел) + рэгдолл-физика на смерти + текстовые вставки с фоном
+   (документальный стиль, без роликов — раздел «что открыто» STATE.md).
+   За основу взята математика изометрии и бросок барабанов из
+   prototype/prototype_scene.html (канон, не трогаем — это отдельный файл).
+   ========================================================================== */
+
+/* ------------------------------ карта (Бермуды) ------------------------- */
+const MAPSTR = [
+  "############",
+  "#....c.....#",
+  "#..c.......#",
+  "#....##....#",
+  "#....#E....#",
+  "#..c.#.....#",
+  "#..........#",
+  "#....##....#",
+  "#.c..##..c.#",
+  "#..........#",
+  "#....c.....#",
+  "############"
+];
+const W = 12, H = 12;
+const TW = 68, TH = 34;
+const EMIT = { x: 6, y: 4, r: 3.1 };
+
+const grid = MAPSTR.map(r => r.split(""));
+const tile = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? "#" : (grid[y][x] || "#");
+const isWalk = (x, y) => tile(x, y) === ".";
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const inHum = (x, y) => Math.hypot(x - EMIT.x, y - EMIT.y) <= EMIT.r;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ------------------------------ юниты ------------------------------------
+   Позиции — float (fx, fy), а не целые клетки: это и есть отличие от
+   пошагового прототипа, юнит плывёт к цели каждый кадр, а не телепортится
+   по завершении хода. */
+let units = [
+  { id:"k", name:"Кессель", role:"солдат", side:"p", fx:3, fy:9, x:3, y:9,
+    hp:8, maxHp:8, hum:0, speed:2.6, path:[], col:"#c8a45c",
+    dead:false, cooldown:0, reload:0.9 },
+  { id:"v", name:"Виктор", role:"учёный", side:"p", fx:5, fy:9, x:5, y:9,
+    hp:6, maxHp:6, hum:0, speed:2.2, path:[], col:"#7fa8bd",
+    dead:false, cooldown:0, reload:1.1 },
+  { id:"e1", name:"Трискель · разведчик", role:"противник", side:"e", fx:4, fy:2, x:4, y:2,
+    hp:6, maxHp:6, hum:0, speed:2.0, path:[], col:"#a35b4a",
+    dead:false, cooldown:1.2, reload:1.6, aiRange:7 },
+  { id:"e2", name:"Трискель · егерь", role:"противник", side:"e", fx:9, fy:7, x:9, y:7,
+    hp:7, maxHp:7, hum:0, speed:2.2, path:[], col:"#8f4f42",
+    dead:false, cooldown:2.0, reload:1.8, aiRange:7 }
+];
+const alive = () => units.filter(u => !u.dead);
+const unitAt = (x, y) => alive().find(u => Math.round(u.fx) === x && Math.round(u.fy) === y);
+const players = () => alive().filter(u => u.side === "p");
+const enemies = () => alive().filter(u => u.side === "e");
+
+/* ------------------------------ состояние -------------------------------- */
+let sel = units[0];
+let hoverTile = { x:-1, y:-1 };
+let paused = false;      // true во время броска резонатора или текстовой вставки
+let over = false;
+let ragdolls = [];       // активные рэгдоллы
+
+/* ------------------------------ утилиты ---------------------------------- */
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+let ORX = 0, ORY = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  cv.width = r.width * DPR; cv.height = r.height * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ORX = r.width / 2;
+  ORY = r.height / 2 - (W + H) * TH / 4 + 30;
+}
+const sx = (x, y) => ORX + (x - y) * (TW / 2);
+const sy = (x, y) => ORY + (x + y) * (TH / 2);
+function pick(mx, my) {
+  const dx = mx - ORX, dy = my - ORY;
+  const fx = (dx / (TW / 2) + dy / (TH / 2)) / 2;
+  const fy = (dy / (TH / 2) - dx / (TW / 2)) / 2;
+  return { x: Math.floor(fx), y: Math.floor(fy) };
+}
+function log(msg, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  $("log").prepend(d);
+  while ($("log").children.length > 8) $("log").lastChild.remove();
+}
+
+/* ------------------------------ линия огня / укрытие --------------------- */
+function hasLOS(a, b) {
+  let x0 = Math.round(a.fx), y0 = Math.round(a.fy);
+  const x1 = Math.round(b.fx), y1 = Math.round(b.fy);
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sxg = x0 < x1 ? 1 : -1, syg = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  for (let guard = 0; guard < 64; guard++) {
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sxg; }
+    if (e2 < dx)  { err += dx; y0 += syg; }
+    if (x0 === x1 && y0 === y1) return true;
+    if (tile(x0, y0) === "#" && Math.hypot(x0 - x1, y0 - y1) > 1.5) return false;
+  }
+  return false;
+}
+function coverOf(shooter, target) {
+  const dx = Math.sign(Math.round(shooter.fx) - Math.round(target.fx));
+  const dy = Math.sign(Math.round(shooter.fy) - Math.round(target.fy));
+  let best = 0;
+  const probes = [[dx, dy], [dx, 0], [0, dy]].filter(p => p[0] || p[1]);
+  for (const [px, py] of probes) {
+    const t = tile(Math.round(target.fx) + px, Math.round(target.fy) + py);
+    if (t === "#") best = Math.max(best, 3);
+    else if (t === "c" || t === "E") best = Math.max(best, 2);
+  }
+  return best;
+}
+function modsFor(shooter, target) {
+  const m = [];
+  const c = coverOf(shooter, target);
+  if (c === 3) m.push({ t: "полное укрытие цели", v: -3 });
+  else if (c === 2) m.push({ t: "низкое укрытие цели", v: -2 });
+  const d = dist({x:shooter.fx,y:shooter.fy}, {x:target.fx,y:target.fy});
+  if (d > 7) m.push({ t: "дальняя дистанция", v: -1 });
+  else if (d <= 2.2) m.push({ t: "вплотную", v: +1 });
+  if (shooter.hum >= 3) m.push({ t: "гул в голове (≥3)", v: -1 });
+  return m;
+}
+const sumMods = m => m.reduce((s, x) => s + x.v, 0);
+
+/* ------------------------------ бросок резонатора ------------------------- */
+function rollBarrels(unit) {
+  const nervous = inHum(Math.round(unit.fx), Math.round(unit.fy));
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const a = 1 + Math.floor(Math.random() * 3);
+    if (!nervous) { out.push(a); continue; }
+    const b = 1 + Math.floor(Math.random() * 3);
+    out.push(Math.min(a, b));
+  }
+  return out;
+}
+function spinTo(final) {
+  return new Promise(res => {
+    const els = [$("b0"), $("b1"), $("b2")];
+    els.forEach(e => e.classList.add("spin"));
+    let ticks = 0;
+    const iv = setInterval(() => {
+      ticks++;
+      els.forEach((e, i) => {
+        if (ticks < 8 + i * 4) e.textContent = 1 + Math.floor(Math.random() * 3);
+        else { e.textContent = final[i]; e.classList.remove("spin"); }
+      });
+      if (ticks >= 16) {
+        clearInterval(iv);
+        els.forEach((e, i) => { e.textContent = final[i]; e.classList.remove("spin"); });
+        res();
+      }
+    }, 40);
+  });
+}
+function outcomeShoot(eff) {
+  if (eff <= 3) return { dmg: 0, t: "ПРОВАЛ — промах, ствол увело", cls: "bad" };
+  if (eff <= 5) return { dmg: 1, t: "скользящее попадание", cls: "" };
+  if (eff <= 7) return { dmg: 2, t: "попадание", cls: "" };
+  if (eff <= 8) return { dmg: 3, t: "плотное попадание", cls: "good" };
+  return { dmg: 4, t: "ИДЕАЛЬНЫЙ РЕЗОНАНС — критическое попадание", cls: "good" };
+}
+
+/* Ключевая механика гибрида: выстрел ставит игру на паузу целиком (все
+   передвижения замирают, включая противников), крутит барабаны, применяет
+   исход — и снимает паузу. Экономики очков хода нет: вместо неё у каждого
+   бойца — cooldown (время на «прийти в себя» после риска), общий для игрока
+   и для ИИ, так что стрелять непрерывно нельзя ни игроку, ни противнику. */
+async function doShoot(shooter, target) {
+  paused = true;
+  shooter.path = [];
+  $("reso").classList.add("show");
+  $("wholine").textContent = shooter.name + " → " + target.name;
+  const mods = modsFor(shooter, target);
+  const barrels = rollBarrels(shooter);
+  await spinTo(barrels);
+  const raw = barrels[0] + barrels[1] + barrels[2];
+  const mod = sumMods(mods);
+  const eff = raw + mod;
+  const modTxt = mods.length ? "  " + mods.map(m => (m.v > 0 ? "+" : "") + m.v).join(" ") : "";
+  $("sumline").innerHTML = "барабаны <b>" + raw + "</b>" + modTxt + " → итог <b>" + eff + "</b>";
+  const o = outcomeShoot(eff);
+  if (o.dmg > 0) {
+    target.hp -= o.dmg;
+    log(shooter.name + " → " + target.name + ": " + o.t + " (−" + o.dmg + ")", o.cls);
+  } else {
+    log(shooter.name + " → " + target.name + ": " + o.t, "bad");
+    if (inHum(Math.round(shooter.fx), Math.round(shooter.fy))) {
+      shooter.hum = Math.min(5, shooter.hum + 1);
+    }
+  }
+  if (target.hp <= 0 && !target.dead) killUnit(target);
+  shooter.cooldown = shooter.reload;
+  await sleep(650);
+  $("reso").classList.remove("show");
+  paused = false;
+  checkEnd();
+  renderRoster();
+}
+
+/* ------------------------------ рэгдолл ----------------------------------- */
+/* Простая точечная физика: голова, грудь, таз, две «ноги» — связаны
+   жёсткими расстояниями (упрощённый verlet), гравитация + случайный
+   импульс от направления попадания. Не претендует на честную 3D-физику
+   (это задача Godot/Unity), только проверяет ощущение «тело падает». */
+function killUnit(u) {
+  u.dead = true;
+  u.hp = 0;
+  log(u.name + " выбывает.", "big");
+  const px = sx(u.fx, u.fy), py = sy(u.fx, u.fy) + TH / 2;
+  const kick = (Math.random() - 0.5) * 3.4;
+  const pts = [
+    { x: px,        y: py - 41, ox: px,        oy: py - 41 },   // голова
+    { x: px,        y: py - 30, ox: px,        oy: py - 30 },   // грудь
+    { x: px,        y: py - 16, ox: px,        oy: py - 16 },   // таз
+    { x: px - 7,    y: py,      ox: px - 7,    oy: py },        // нога L
+    { x: px + 7,    y: py,      ox: px + 7,    oy: py }         // нога R
+  ];
+  pts[0].vx = kick * 1.6; pts[0].vy = -2 - Math.random() * 2;
+  pts[1].vx = kick;       pts[1].vy = -1;
+  const links = [[0,1,11],[1,2,14],[2,3,15],[2,4,15]];
+  ragdolls.push({ pts, links, ground: py + 2, t: 0, col: u.col });
+}
+function stepRagdolls(dt) {
+  for (const r of ragdolls) {
+    r.t += dt;
+    for (const p of r.pts) {
+      if (p.vx === undefined) { p.vx = 0; p.vy = 0; }
+      p.vy += 9.2 * dt;             // гравитация
+      p.x += p.vx * 30 * dt;
+      p.y += p.vy * 30 * dt;
+      if (p.y > r.ground) { p.y = r.ground; p.vy *= -0.15; p.vx *= 0.6; }
+    }
+    for (let iter = 0; iter < 3; iter++) {
+      for (const [ai, bi, len] of r.links) {
+        const a = r.pts[ai], b = r.pts[bi];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.001;
+        const diff = (d - len) / d * 0.5;
+        const ox = dx * diff, oy = dy * diff;
+        a.x += ox; a.y += oy; b.x -= ox; b.y -= oy;
+      }
+    }
+  }
+  ragdolls = ragdolls.filter(r => r.t < 6);
+}
+function drawRagdolls() {
+  for (const r of ragdolls) {
+    const fade = Math.max(0, 1 - Math.max(0, r.t - 4) / 2);
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = r.col; ctx.lineWidth = 6; ctx.lineCap = "round";
+    for (const [ai, bi] of r.links) {
+      const a = r.pts[ai], b = r.pts[bi];
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.fillStyle = r.col;
+    ctx.beginPath(); ctx.arc(r.pts[0].x, r.pts[0].y, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ------------------------------ путь / реал-тайм движение ------------------ */
+function findPath(u, gx, gy) {
+  const key = (x, y) => x + "," + y;
+  const sxp = Math.round(u.fx), syp = Math.round(u.fy);
+  if (!isWalk(gx, gy)) return [];
+  const q = [[sxp, syp]];
+  const seen = new Set([key(sxp, syp)]);
+  const prev = new Map();
+  let found = null;
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === gx && y === gy) { found = [x, y]; break; }
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (seen.has(k) || !isWalk(nx, ny)) continue;
+      seen.add(k); prev.set(k, [x, y]); q.push([nx, ny]);
+    }
+  }
+  if (!found) return [];
+  const path = [];
+  let cur = found;
+  while (cur && !(cur[0] === sxp && cur[1] === syp)) {
+    path.unshift({ x: cur[0], y: cur[1] });
+    cur = prev.get(key(cur[0], cur[1]));
+  }
+  return path;
+}
+function stepUnit(u, dt) {
+  if (!u.path.length) return;
+  const t = u.path[0];
+  const dx = t.x - u.fx, dy = t.y - u.fy;
+  const d = Math.hypot(dx, dy);
+  const step = u.speed * dt;
+  if (d <= step) { u.fx = t.x; u.fy = t.y; u.path.shift(); }
+  else { u.fx += dx / d * step; u.fy += dy / d * step; }
+  u.x = Math.round(u.fx); u.y = Math.round(u.fy);
+}
+
+/* ------------------------------ ИИ противника (реал-тайм) ------------------ */
+function aiThink(e, dt) {
+  if (e.cooldown > 0) { e.cooldown -= dt; return; }
+  const tgt = players().filter(p => hasLOS(e, p) && dist({x:e.fx,y:e.fy},{x:p.fx,y:p.fy}) <= e.aiRange)
+    .sort((a, b) => dist({x:e.fx,y:e.fy},{x:a.fx,y:a.fy}) - dist({x:e.fx,y:e.fy},{x:b.fx,y:b.fy}))[0];
+  if (tgt) {
+    e.path = [];
+    doShoot(e, tgt);           // ставит игру на паузу сама
+    return;
+  }
+  if (!e.path.length && Math.random() < 0.01) {
+    const gx = Math.max(1, Math.min(W - 2, Math.round(e.fx) + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random()*2))));
+    const gy = Math.max(1, Math.min(H - 2, Math.round(e.fy) + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random()*2))));
+    if (isWalk(gx, gy)) e.path = findPath(e, gx, gy);
+  }
+}
+
+/* ------------------------------ конец сцены -------------------------------- */
+function checkEnd() {
+  if (over) return;
+  if (!enemies().length) finish("Зачищено", "Разведка Трискеля отброшена. Гул на точке никуда не делся — это была не главная угроза миссии.");
+  else if (!players().length) finish("Отряд потерян", "Гибридная схема честно показывает то же, что и пошаговая: гул и пули не прощают спешки.");
+}
+function finish(t, p) {
+  over = true;
+  $("endt").textContent = t; $("endp").textContent = p;
+  $("endcard").style.display = "flex";
+}
+
+/* ------------------------------ отрисовка ----------------------------------- */
+function tileTop(x, y) {
+  const t = tile(x, y);
+  if (t === "#") return "#5d5346";
+  if (t === "c") return "#7a6544";
+  if (t === "E") return "#6d4a4a";
+  return inHum(x, y) ? "#4a3630" : "#3b372f";
+}
+function drawTile(x, y) {
+  const px = sx(x, y), py = sy(x, y);
+  const t = tile(x, y);
+  ctx.beginPath();
+  ctx.moveTo(px, py); ctx.lineTo(px + TW/2, py + TH/2);
+  ctx.lineTo(px, py + TH); ctx.lineTo(px - TW/2, py + TH/2);
+  ctx.closePath();
+  ctx.fillStyle = tileTop(x, y); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 1; ctx.stroke();
+  if (hoverTile.x === x && hoverTile.y === y) {
+    ctx.strokeStyle = "rgba(236,224,196,.85)"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (t === "#" || t === "c" || t === "E") {
+    const hgt = t === "#" ? 30 : (t === "E" ? 24 : 14);
+    const top = py - hgt;
+    ctx.beginPath();
+    ctx.moveTo(px, top); ctx.lineTo(px + TW/2, top + TH/2);
+    ctx.lineTo(px, top + TH); ctx.lineTo(px - TW/2, top + TH/2);
+    ctx.closePath();
+    ctx.fillStyle = t === "#" ? "#6d6252" : (t === "E" ? "#8a5b57" : "#93794f");
+    ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px - TW/2, top + TH/2); ctx.lineTo(px, top + TH);
+    ctx.lineTo(px, py + TH); ctx.lineTo(px - TW/2, py + TH/2);
+    ctx.closePath(); ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px + TW/2, top + TH/2); ctx.lineTo(px, top + TH);
+    ctx.lineTo(px, py + TH); ctx.lineTo(px + TW/2, py + TH/2);
+    ctx.closePath(); ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fill();
+  }
+}
+function drawUnit(u) {
+  const px = sx(u.fx, u.fy), py = sy(u.fx, u.fy) + TH / 2;
+  ctx.beginPath(); ctx.ellipse(px, py, 17, 8, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fill();
+  if (sel === u) {
+    ctx.beginPath(); ctx.ellipse(px, py, 22, 11, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = "#c8a45c"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(px - 8, py - 34, 16, 28, 5) : ctx.rect(px - 8, py - 34, 16, 28);
+  ctx.fillStyle = u.col; ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px, py - 41, 7, 0, Math.PI * 2);
+  ctx.fillStyle = u.col; ctx.fill(); ctx.stroke();
+  const bw = 26;
+  ctx.fillStyle = "#000"; ctx.fillRect(px - bw/2, py - 56, bw, 4);
+  ctx.fillStyle = u.side === "p" ? "#7d9464" : "#a8443a";
+  ctx.fillRect(px - bw/2, py - 56, bw * (u.hp / u.maxHp), 4);
+  if (u.cooldown > 0) {
+    ctx.fillStyle = "#000"; ctx.fillRect(px - bw/2, py - 61, bw, 3);
+    ctx.fillStyle = "#c8a45c"; ctx.fillRect(px - bw/2, py - 61, bw * Math.min(1, u.cooldown / u.reload), 3);
+  }
+}
+function draw() {
+  const r = cv.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) drawTile(x, y);
+  const t = performance.now() / 700;
+  const ex = sx(EMIT.x, EMIT.y), ey = sy(EMIT.x, EMIT.y) + TH / 2 - 20;
+  ctx.beginPath();
+  ctx.arc(ex, ey, 16 + Math.sin(t) * 5, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(200,90,70," + (0.5 + Math.sin(t) * 0.25) + ")";
+  ctx.lineWidth = 2; ctx.stroke();
+  alive().slice().sort((a, b) => (a.fx + a.fy) - (b.fx + b.fy)).forEach(drawUnit);
+  drawRagdolls();
+}
+
+/* ------------------------------ игровой цикл (реал-тайм) ------------------- */
+let last = null;
+function frame(ts) {
+  if (last === null) last = ts;
+  const dt = Math.min(0.05, (ts - last) / 1000);
+  last = ts;
+  if (!paused && !over && !introShowing) {
+    for (const u of players()) { stepUnit(u, dt); if (u.cooldown > 0) u.cooldown -= dt; }
+    for (const e of enemies()) { stepUnit(e, dt); aiThink(e, dt); }
+    for (const p of players()) {
+      if (inHum(Math.round(p.fx), Math.round(p.fy))) {
+        p.hum = Math.min(5, p.hum + dt * 0.4);
+        if (p.hum >= 5 && !p.dead) { p.hp -= 0.02; if (p.hp <= 0) killUnit(p); }
+      } else p.hum = Math.max(0, p.hum - dt * 0.25);
+    }
+    stepRagdolls(dt);
+  }
+  draw();
+  renderRoster();
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------ интерфейс ----------------------------------- */
+function renderRoster() {
+  const box = $("roster"); box.innerHTML = "";
+  units.forEach(u => {
+    if (u.side !== "p") return;
+    const d = document.createElement("div");
+    d.className = "unit" + (sel === u ? " sel" : "") + (u.dead ? " dead" : "");
+    d.innerHTML =
+      '<div class="nm">' + u.name + ' <small>' + u.role + '</small></div>' +
+      '<div class="bar hp"><i style="width:' + (100 * Math.max(0,u.hp) / u.maxHp) + '%"></i></div>' +
+      '<div class="bar hum"><i style="width:' + (100 * u.hum / 5) + '%"></i></div>';
+    if (!u.dead) d.onclick = () => { sel = u; };
+    box.appendChild(d);
+  });
+}
+
+cv.addEventListener("mousemove", e => {
+  const r = cv.getBoundingClientRect();
+  hoverTile = pick(e.clientX - r.left, e.clientY - r.top);
+});
+cv.addEventListener("click", e => {
+  if (paused || over || introShowing) return;
+  const r = cv.getBoundingClientRect();
+  const t = pick(e.clientX - r.left, e.clientY - r.top);
+  const u = unitAt(t.x, t.y);
+  if (u && u.side === "e" && sel) {
+    if (!hasLOS(sel, u)) { log("Нет линии огня.", "bad"); return; }
+    if (dist({x:sel.fx,y:sel.fy},{x:u.fx,y:u.fy}) > 9) { log("Слишком далеко.", "bad"); return; }
+    if (sel.cooldown > 0) { log(sel.name + " ещё не готов стрелять.", "bad"); return; }
+    doShoot(sel, u);
+    return;
+  }
+  if (u && u.side === "p") { sel = u; return; }
+  if (sel && isWalk(t.x, t.y)) sel.path = findPath(sel, t.x, t.y);
+});
+
+/* ------------------------------ текстовые вставки (3 миссии) --------------- */
+const CARDS = [
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 1", title: "Прибытие", sub: "База Аненербе · весна 1938",
+    lines: [
+      "Кессель прибывает на базу поздней весной 1938-го. Знакомство с отрядом:" +
+      " Грета (медик — легенда), Ансельм, Дитер, Курт. Виктор смотрит на всех как на часть эксперимента.",
+      "«Вы ищете Врата. Всё остальное — шум», — Вернер Хайнц, штандартенфюрер," +
+      " командует дистанционно и лично в поле не появится ещё восемь миссий."
+    ] },
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 4", title: "Святилище", sub: "Тибет, Лхаса · осень 1938",
+    lines: [
+      "Монахи веками говорили о гуле и «свете бога». Отряд им не поверил —" +
+      " до первых симптомов на подходе к святилищу.",
+      "Излучатель отключён — первый в мире задокументированный успех." +
+      " Тензин, ближе всех подошедший к источнику гула, не переживает эту победу."
+    ] },
+  { stamp: "ГЕХАЙМ · АНЕНЕРБЕ · МИССИЯ 9", title: "Бермудский вертекс", sub: "Бермудский архипелаг · 1939",
+    lines: [
+      "Самый мощный из трёх излучателей. На эту операцию лично прибывает Вернер —" +
+      " впервые за всё время.",
+      "Гул, который в Тибете убил Тензина, здесь доводит человека до полного" +
+      " беспамятства. Отряд входит вшестером. Выйдут не все."
+    ] }
+];
+let cardIdx = 0;
+let introShowing = true;
+function paintCard() {
+  const c = CARDS[cardIdx];
+  $("chStamp").textContent = c.stamp;
+  $("chTitle").textContent = c.title;
+  $("chSub").textContent = c.sub;
+  $("chBody").innerHTML = c.lines.map(l => "<p>" + l + "</p>").join("");
+  $("chGo").textContent = cardIdx < CARDS.length - 1 ? "— нажмите, чтобы читать дальше —" : "— нажмите, чтобы принять управление —";
+  $("chDots").innerHTML = CARDS.map((_, i) => '<i class="' + (i === cardIdx ? "on" : "") + '"></i>').join("");
+  const grad = "linear-gradient(rgba(8,7,6,.55),rgba(8,7,6,.85)), " +
+    "repeating-linear-gradient(115deg, #241f19 0 3px, #1c1712 3px 7px)";
+  $("chron").style.backgroundImage = grad;
+}
+$("chron").onclick = () => {
+  cardIdx++;
+  if (cardIdx >= CARDS.length) {
+    $("chron").style.display = "none";
+    introShowing = false;
+    log("— гибридный режим включён —", "big");
+    log("Виктор: «Прибор не делает нас сильнее. Он только показывает правду».");
+    return;
+  }
+  paintCard();
+};
+paintCard();
+
+window.addEventListener("resize", resize);
+resize();
+renderRoster();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
